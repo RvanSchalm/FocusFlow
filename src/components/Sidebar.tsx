@@ -13,19 +13,27 @@ export function Sidebar() {
     const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
 
     const createBoard = async () => {
-        const id = await db.boards.add({
-            title: "Untitled Board",
-            createdAt: new Date(),
-        });
-        navigate(`/board/${id}`);
+        try {
+            const id = await db.boards.add({
+                title: "Untitled Board",
+                createdAt: new Date(),
+            });
+            navigate(`/board/${id}`);
+        } catch (error) {
+            console.error("Failed to create board:", error);
+        }
     };
 
     const deleteBoard = async (e: React.MouseEvent, id: number) => {
         e.stopPropagation();
         if (confirm("Are you sure you want to delete this board?")) {
-            await db.boards.delete(id);
-            if (location.pathname === `/board/${id}`) {
-                navigate("/");
+            try {
+                await db.boards.delete(id);
+                if (location.pathname === `/board/${id}`) {
+                    navigate("/");
+                }
+            } catch (error) {
+                console.error("Failed to delete board:", error);
             }
         }
     };

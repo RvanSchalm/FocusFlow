@@ -1,6 +1,7 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { useState } from "react";
 import { db } from "../db";
+import type { Label } from "../db";
 import { ColorPicker } from "./ColorPicker";
 
 export function LabelManager() {
@@ -14,17 +15,21 @@ export function LabelManager() {
     const handleSubmit = async () => {
         if (!name.trim()) return;
 
-        if (editingId) {
-            await db.labels.update(editingId, { name: name.trim(), color });
-            setEditingId(null);
-        } else {
-            await db.labels.add({ name: name.trim(), color });
+        try {
+            if (editingId) {
+                await db.labels.update(editingId, { name: name.trim(), color });
+                setEditingId(null);
+            } else {
+                await db.labels.add({ name: name.trim(), color });
+            }
+            setName("");
+            setColor("#3B82F6");
+        } catch (error) {
+            console.error("Failed to save label:", error);
         }
-        setName("");
-        setColor("#3B82F6");
     };
 
-    const startEditing = (label: any) => {
+    const startEditing = (label: Label) => {
         setEditingId(label.id);
         setName(label.name);
         setColor(label.color);
@@ -38,9 +43,13 @@ export function LabelManager() {
 
     const deleteLabel = async (id: number) => {
         if (confirm("Delete this label?")) {
-            await db.labels.delete(id);
-            if (editingId === id) {
-                cancelEditing();
+            try {
+                await db.labels.delete(id);
+                if (editingId === id) {
+                    cancelEditing();
+                }
+            } catch (error) {
+                console.error("Failed to delete label:", error);
             }
         }
     };

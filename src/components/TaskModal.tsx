@@ -57,7 +57,11 @@ export function TaskModal({ taskId }: TaskModalProps) {
     if (!task) return null;
 
     const handleSave = async (updates: Partial<Task>) => {
-        await db.tasks.update(taskId, updates);
+        try {
+            await db.tasks.update(taskId, updates);
+        } catch (error) {
+            console.error("Failed to save task:", error);
+        }
     };
 
     const toggleLabel = async (labelId: number) => {

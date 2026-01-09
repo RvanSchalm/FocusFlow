@@ -36,19 +36,27 @@ export function BoardView() {
     }, [board, isEditingTitle]);
 
     const handleTitleSave = async () => {
-        if (title.trim() !== board?.title) {
-            await db.boards.update(id, { title });
+        try {
+            if (title.trim() !== board?.title) {
+                await db.boards.update(id, { title });
+            }
+        } catch (error) {
+            console.error("Failed to save board title:", error);
         }
         setIsEditingTitle(false);
     };
 
     const addColumn = async () => {
-        const order = columns ? columns.length : 0;
-        await db.columns.add({
-            boardId: id,
-            title: "New Column",
-            order,
-        });
+        try {
+            const order = columns ? columns.length : 0;
+            await db.columns.add({
+                boardId: id,
+                title: "New Column",
+                order,
+            });
+        } catch (error) {
+            console.error("Failed to add column:", error);
+        }
     };
 
     const onDragEnd = async (result: DropResult) => {

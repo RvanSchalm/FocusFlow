@@ -16,35 +16,47 @@ export function Column({ column, tasks, index, onTaskClick }: ColumnProps) {
     const [title, setTitle] = useState(column.title);
 
     const handleTitleSave = async () => {
-        if (title.trim() !== column.title) {
-            await db.columns.update(column.id, { title });
+        try {
+            if (title.trim() !== column.title) {
+                await db.columns.update(column.id, { title });
+            }
+        } catch (error) {
+            console.error("Failed to save column title:", error);
         }
         setIsEditingTitle(false);
     };
 
     const addTask = async () => {
-        const order = tasks.length;
-        await db.tasks.add({
-            boardId: column.boardId,
-            columnId: column.id,
-            title: "New Task",
-            description: "",
-            urgency: 0,
-            importance: 0,
-            labelIds: [],
-            checklist: [],
+        try {
+            const order = tasks.length;
+            await db.tasks.add({
+                boardId: column.boardId,
+                columnId: column.id,
+                title: "New Task",
+                description: "",
+                urgency: 0,
+                importance: 0,
+                labelIds: [],
+                checklist: [],
             comments: [],
             attachments: [],
             order,
         });
+        } catch (error) {
+            console.error("Failed to add task:", error);
+        }
     };
 
     const deleteColumn = async (id: number) => {
         if (confirm("Delete this column and all its tasks?")) {
-            await db.transaction("rw", db.columns, db.tasks, async () => {
-                await db.columns.delete(id);
-                await db.tasks.where("columnId").equals(id).delete();
-            });
+            try {
+                await db.transaction("rw", db.columns, db.tasks, async () => {
+                    await db.columns.delete(id);
+                    await db.tasks.where("columnId").equals(id).delete();
+                });
+            } catch (error) {
+                console.error("Failed to delete column:", error);
+            }
         }
     };
 

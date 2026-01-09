@@ -14,8 +14,11 @@ export function TaskCard({ task, index, onClick }: TaskCardProps) {
 
     const handleDelete = async (e: React.MouseEvent) => {
         e.stopPropagation();
-        // Instant delete
-        await db.tasks.delete(task.id);
+        try {
+            await db.tasks.delete(task.id);
+        } catch (error) {
+            console.error("Failed to delete task:", error);
+        }
     };
 
     const handleCardClick = () => {
