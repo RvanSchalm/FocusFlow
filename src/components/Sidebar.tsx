@@ -26,9 +26,16 @@ export function Sidebar() {
 
     const deleteBoard = async (e: React.MouseEvent, id: number) => {
         e.stopPropagation();
-        if (confirm("Are you sure you want to delete this board?")) {
+        if (confirm("Are you sure you want to delete this board and all its columns/tasks?")) {
             try {
-                await db.boards.delete(id);
+                await db.transaction("rw", db.boards, db.columns, db.tasks, async () => {
+                    // Delete all tasks in this board
+                    await db.tasks.where("boardId").equals(id).delete();
+                    // Delete all columns in this board
+                    await db.columns.where("boardId").equals(id).delete();
+                    // Delete the board itself
+                    await db.boards.delete(id);
+                });
                 if (location.pathname === `/board/${id}`) {
                     navigate("/");
                 }

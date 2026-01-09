@@ -140,7 +140,29 @@ export function BoardView() {
         }
     };
 
-    if (!board) return <div className="p-8 text-zinc-400">Loading...</div>;
+    // Show loading state while data is being fetched
+    if (board === undefined || columns === undefined || tasks === undefined) {
+        return (
+            <div className="flex-1 flex items-center justify-center h-screen bg-zinc-950">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                    <p className="text-zinc-400 text-sm">Loading board...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Board not found (invalid ID)
+    if (board === null) {
+        return (
+            <div className="flex-1 flex items-center justify-center h-screen bg-zinc-950">
+                <div className="flex flex-col items-center gap-4">
+                    <h1 className="text-2xl font-bold text-zinc-400">Board not found</h1>
+                    <p className="text-zinc-500">This board may have been deleted.</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex-1 flex flex-col h-screen bg-zinc-950 overflow-hidden relative">
