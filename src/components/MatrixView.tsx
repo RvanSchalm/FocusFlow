@@ -1,4 +1,3 @@
-
 import type { Label, Task } from "../db";
 
 interface MatrixViewProps {

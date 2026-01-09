@@ -1,6 +1,6 @@
 import { DragDropContext, Droppable, type DropResult } from "@hello-pangea/dnd";
 import { useLiveQuery } from "dexie-react-hooks";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { db } from "../db";
 import { Column } from "./Column";
@@ -27,6 +27,21 @@ export function BoardView() {
     const [title, setTitle] = useState("");
     const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
     const [viewMode, setViewMode] = useState<"kanban" | "matrix">("kanban");
+    const [selectedColumnIds, setSelectedColumnIds] = useState<number[]>([]);
+    const [isColumnFilterOpen, setIsColumnFilterOpen] = useState(false);
+    const columnsInitialized = useRef(false);
+    const columnFilterRef = useRef<HTMLDivElement>(null);
+
+    // Close column filter dropdown when clicking outside
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (columnFilterRef.current && !columnFilterRef.current.contains(event.target as Node)) {
+                setIsColumnFilterOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     // Initialize title when board loads
     useEffect(() => {
@@ -34,6 +49,20 @@ export function BoardView() {
             setTitle(board.title);
         }
     }, [board, isEditingTitle]);
+
+    // Initialize selected columns when columns load (select all by default)
+    useEffect(() => {
+        if (columns && columns.length > 0 && !columnsInitialized.current) {
+            setSelectedColumnIds(columns.map(c => c.id));
+            columnsInitialized.current = true;
+        }
+    }, [columns]);
+
+    // Reset initialization flag when board changes
+    useEffect(() => {
+        columnsInitialized.current = false;
+        setSelectedColumnIds([]);
+    }, [id]);
 
     const handleTitleSave = async () => {
         try {
@@ -175,8 +204,8 @@ export function BoardView() {
             </div>
 
             {/* Header */}
-            <div className="h-16 border-b border-zinc-800/50 bg-zinc-900/80 backdrop-blur-md flex items-center justify-between px-6 flex-shrink-0 z-10">
-                <div className="flex items-center">
+            <div className="h-16 border-b border-zinc-800/50 bg-zinc-900/80 backdrop-blur-md flex items-center justify-between px-6 flex-shrink-0 z-20">
+                <div className="flex items-center flex-1">
                     {isEditingTitle ? (
                         <input
                             type="text"
@@ -200,26 +229,106 @@ export function BoardView() {
                     )}
                 </div>
 
-                {/* View Toggle */}
-                <div className="flex bg-zinc-900 p-1 rounded-lg border border-zinc-800">
-                    <button
-                        onClick={() => setViewMode("kanban")}
-                        className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === "kanban"
-                            ? "bg-zinc-800 text-zinc-100 shadow-sm ring-1 ring-zinc-700"
-                            : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50"
-                            }`}
-                    >
-                        Kanban View
-                    </button>
-                    <button
-                        onClick={() => setViewMode("matrix")}
-                        className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === "matrix"
-                            ? "bg-zinc-800 text-zinc-100 shadow-sm ring-1 ring-zinc-700"
-                            : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50"
-                            }`}
-                    >
-                        Matrix View
-                    </button>
+                {/* Column Filter - Center (only visible in Matrix view) */}
+                <div className="flex-1 flex justify-center">
+                    {viewMode === "matrix" && (
+                        <div className="relative" ref={columnFilterRef}>
+                            <button
+                                onClick={() => setIsColumnFilterOpen(!isColumnFilterOpen)}
+                                className="flex items-center gap-2 px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm font-medium text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100 transition-colors"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                                </svg>
+                                Columns
+                                <span className="px-1.5 py-0.5 bg-zinc-900 rounded text-xs text-zinc-400">
+                                    {selectedColumnIds.length}/{columns.length}
+                                </span>
+                                <svg className={`w-4 h-4 transition-transform ${isColumnFilterOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+
+                            {isColumnFilterOpen && (
+                                <div className="absolute left-1/2 -translate-x-1/2 mt-2 w-56 bg-zinc-900 rounded-xl shadow-xl border border-zinc-800 z-50 py-2 overflow-hidden">
+                                    {/* Select/Deselect All */}
+                                    <div className="px-3 pb-2 mb-2 border-b border-zinc-800 flex gap-2">
+                                        <button
+                                            onClick={() => setSelectedColumnIds(columns.map(c => c.id))}
+                                            disabled={columns.length > 0 && selectedColumnIds.length === columns.length}
+                                            className="flex-1 px-2 py-1.5 text-xs font-medium rounded-lg bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            Select All
+                                        </button>
+                                        <button
+                                            onClick={() => setSelectedColumnIds([])}
+                                            disabled={selectedColumnIds.length === 0}
+                                            className="flex-1 px-2 py-1.5 text-xs font-medium rounded-lg bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            Deselect All
+                                        </button>
+                                    </div>
+
+                                    {/* Column List */}
+                                    <div className="max-h-60 overflow-y-auto">
+                                        {columns.map(column => (
+                                            <button
+                                                key={column.id}
+                                                onClick={() => {
+                                                    if (selectedColumnIds.includes(column.id)) {
+                                                        setSelectedColumnIds(selectedColumnIds.filter(id => id !== column.id));
+                                                    } else {
+                                                        setSelectedColumnIds([...selectedColumnIds, column.id]);
+                                                    }
+                                                }}
+                                                className="w-full flex items-center gap-3 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 transition-colors"
+                                            >
+                                                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                                                    selectedColumnIds.includes(column.id)
+                                                        ? "bg-indigo-500 border-indigo-500"
+                                                        : "border-zinc-600 bg-transparent"
+                                                }`}>
+                                                    {selectedColumnIds.includes(column.id) && (
+                                                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                    )}
+                                                </div>
+                                                <span className="truncate">{column.title}</span>
+                                            </button>
+                                        ))}
+                                        {columns.length === 0 && (
+                                            <div className="px-3 py-2 text-sm text-zinc-500 italic">No columns</div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {/* View Toggle - Right */}
+                <div className="flex-1 flex justify-end">
+                    <div className="flex bg-zinc-900 p-1 rounded-lg border border-zinc-800">
+                        <button
+                            onClick={() => setViewMode("kanban")}
+                            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === "kanban"
+                                ? "bg-zinc-800 text-zinc-100 shadow-sm ring-1 ring-zinc-700"
+                                : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50"
+                                }`}
+                        >
+                            Kanban View
+                        </button>
+                        <button
+                            onClick={() => setViewMode("matrix")}
+                            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === "matrix"
+                                ? "bg-zinc-800 text-zinc-100 shadow-sm ring-1 ring-zinc-700"
+                                : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50"
+                                }`}
+                        >
+                            Matrix View
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -257,9 +366,9 @@ export function BoardView() {
                     </DragDropContext>
                 </div>
             ) : (
-                <div className="z-10 flex-1 h-full">
+                <div className="flex-1 h-full">
                     <MatrixView
-                        tasks={tasks || []}
+                        tasks={(tasks || []).filter(t => selectedColumnIds.includes(t.columnId))}
                         labels={labels || []}
                         onTaskClick={setSelectedTaskId}
                     />
