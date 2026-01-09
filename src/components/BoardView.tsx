@@ -37,9 +37,11 @@ export function BoardView() {
 
     const handleTitleSave = async () => {
         try {
-            if (title.trim() !== board?.title) {
-                await db.boards.update(id, { title });
+            const newTitle = title.trim() || "New Board";
+            if (newTitle !== board?.title) {
+                await db.boards.update(id, { title: newTitle });
             }
+            setTitle(newTitle);
         } catch (error) {
             console.error("Failed to save board title:", error);
         }

@@ -19,9 +19,11 @@ export function Column({ column, tasks, index, onTaskClick }: ColumnProps) {
 
     const handleTitleSave = async () => {
         try {
-            if (title.trim() !== column.title) {
-                await db.columns.update(column.id, { title });
+            const newTitle = title.trim() || "New Column";
+            if (newTitle !== column.title) {
+                await db.columns.update(column.id, { title: newTitle });
             }
+            setTitle(newTitle);
         } catch (error) {
             console.error("Failed to save column title:", error);
         }

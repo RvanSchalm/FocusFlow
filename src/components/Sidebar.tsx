@@ -17,7 +17,7 @@ export function Sidebar() {
     const createBoard = async () => {
         try {
             const id = await db.boards.add({
-                title: "Untitled Board",
+                title: "New Board",
                 createdAt: new Date(),
             });
             navigate(`/board/${id}`);
