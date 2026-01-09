@@ -41,8 +41,10 @@ export function Column({ column, tasks, index, onTaskClick }: ColumnProps) {
 
     const deleteColumn = async (id: number) => {
         if (confirm("Delete this column and all its tasks?")) {
-            await db.columns.delete(id);
-            await db.tasks.where("columnId").equals(id).delete();
+            await db.transaction("rw", db.columns, db.tasks, async () => {
+                await db.columns.delete(id);
+                await db.tasks.where("columnId").equals(id).delete();
+            });
         }
     };
 

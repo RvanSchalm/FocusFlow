@@ -45,6 +45,25 @@ export function Sidebar() {
                 const json = event.target?.result as string;
                 const data = JSON.parse(json);
 
+                // Validate imported data structure
+                if (typeof data !== 'object' || data === null) {
+                    throw new Error('Invalid data format: expected an object');
+                }
+
+                // Validate arrays if they exist
+                if (data.boards && !Array.isArray(data.boards)) {
+                    throw new Error('Invalid data format: boards must be an array');
+                }
+                if (data.columns && !Array.isArray(data.columns)) {
+                    throw new Error('Invalid data format: columns must be an array');
+                }
+                if (data.tasks && !Array.isArray(data.tasks)) {
+                    throw new Error('Invalid data format: tasks must be an array');
+                }
+                if (data.labels && !Array.isArray(data.labels)) {
+                    throw new Error('Invalid data format: labels must be an array');
+                }
+
                 // Convert Base64 attachments back to Blobs
                 if (data.tasks) {
                     for (const task of data.tasks) {
@@ -174,15 +193,17 @@ export function Sidebar() {
                                 >
                                     {board.title}
                                 </Link>
-                                <button
-                                    onClick={(e) => deleteBoard(e, board.id!)}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-zinc-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all rounded hover:bg-zinc-700"
-                                    title="Delete Board"
+                                {board.id !== undefined && (
+                                    <button
+                                        onClick={(e) => deleteBoard(e, board.id)}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-zinc-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all rounded hover:bg-zinc-700"
+                                        title="Delete Board"
                                 >
                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                     </svg>
                                 </button>
+                                )}
                             </div>
                         ))}
                         {boards?.length === 0 && (

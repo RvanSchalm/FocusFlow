@@ -223,11 +223,9 @@ export function TaskModal({ taskId }: TaskModalProps) {
                         min="0"
                         max="10"
                         value={urgency}
-                        onChange={(e) => {
-                            const val = parseInt(e.target.value);
-                            setUrgency(val);
-                            handleSave({ urgency: val });
-                        }}
+                        onChange={(e) => setUrgency(parseInt(e.target.value, 10))}
+                        onMouseUp={() => handleSave({ urgency })}
+                        onTouchEnd={() => handleSave({ urgency })}
                         className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-indigo-500 text-indigo-400"
                     />
                 </div>
@@ -243,11 +241,9 @@ export function TaskModal({ taskId }: TaskModalProps) {
                         min="0"
                         max="10"
                         value={importance}
-                        onChange={(e) => {
-                            const val = parseInt(e.target.value);
-                            setImportance(val);
-                            handleSave({ importance: val });
-                        }}
+                        onChange={(e) => setImportance(parseInt(e.target.value, 10))}
+                        onMouseUp={() => handleSave({ importance })}
+                        onTouchEnd={() => handleSave({ importance })}
                         className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-purple-500 text-purple-400"
                     />
                 </div>
