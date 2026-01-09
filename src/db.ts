@@ -50,19 +50,27 @@ const db = new Dexie('FocusFlowDatabase') as Dexie & {
     tasks: EntityTable<Task, 'id'>;
 };
 
+// Note: In Dexie, you only need to specify the indexed fields, not all fields.
+// Each version upgrade should include all tables that exist at that version.
+
 db.version(1).stores({
     boards: '++id, title',
     labels: '++id, name, color',
-    tasks: '++id, boardId, title, description, urgency, importance, columnId, *labelIds',
+    tasks: '++id, boardId, columnId, *labelIds',
 });
 
 db.version(2).stores({
-    columns: '++id, boardId, title, order',
-    tasks: '++id, boardId, title, description, urgency, importance, columnId, *labelIds'
+    boards: '++id, title',
+    columns: '++id, boardId, order',
+    labels: '++id, name, color',
+    tasks: '++id, boardId, columnId, *labelIds',
 });
 
 db.version(3).stores({
-    tasks: '++id, boardId, title, description, urgency, importance, columnId, *labelIds, order'
+    boards: '++id, title',
+    columns: '++id, boardId, order',
+    labels: '++id, name, color',
+    tasks: '++id, boardId, columnId, order, *labelIds',
 });
 
 export { db };

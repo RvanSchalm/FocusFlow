@@ -1,6 +1,6 @@
 import { DragDropContext, Droppable, type DropResult } from "@hello-pangea/dnd";
 import { useLiveQuery } from "dexie-react-hooks";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { db } from "../db";
 import { Column } from "./Column";
@@ -10,7 +10,7 @@ import { TaskModal } from "./TaskModal";
 
 export function BoardView() {
     const { boardId } = useParams();
-    const id = parseInt(boardId || "0");
+    const id = parseInt(boardId || "0", 10);
 
     const board = useLiveQuery(() => db.boards.get(id), [id]);
     const columns = useLiveQuery(
@@ -29,9 +29,11 @@ export function BoardView() {
     const [viewMode, setViewMode] = useState<"kanban" | "matrix">("kanban");
 
     // Initialize title when board loads
-    if (board && title === "" && !isEditingTitle) {
-        setTitle(board.title);
-    }
+    useEffect(() => {
+        if (board && !isEditingTitle) {
+            setTitle(board.title);
+        }
+    }, [board, isEditingTitle]);
 
     const handleTitleSave = async () => {
         if (title.trim() !== board?.title) {

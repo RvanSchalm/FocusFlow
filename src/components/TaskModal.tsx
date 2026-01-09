@@ -12,7 +12,7 @@ interface TaskModalProps {
     onClose: () => void;
 }
 
-export function TaskModal({ taskId, onClose }: TaskModalProps) {
+export function TaskModal({ taskId }: TaskModalProps) {
     const task = useLiveQuery(() => db.tasks.get(taskId), [taskId]);
     const labels = useLiveQuery(() => db.labels.toArray());
 
@@ -33,6 +33,15 @@ export function TaskModal({ taskId, onClose }: TaskModalProps) {
             setImportance(task.importance);
         }
     }, [task]);
+
+    // Cleanup previewImage Blob URL when it changes or component unmounts
+    useEffect(() => {
+        return () => {
+            if (previewImage) {
+                URL.revokeObjectURL(previewImage);
+            }
+        };
+    }, [previewImage]);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -414,15 +423,15 @@ export function TaskModal({ taskId, onClose }: TaskModalProps) {
                                     const url = URL.createObjectURL(blob);
 
                                     if (attachment.type.startsWith('image/')) {
+                                        // Revoke previous preview URL if exists
+                                        if (previewImage) {
+                                            URL.revokeObjectURL(previewImage);
+                                        }
                                         setPreviewImage(url);
                                     } else if (attachment.type === 'application/pdf') {
                                         window.open(url, '_blank');
-                                        // Note: We can't easily revoke the URL if we open in new tab,
-                                        // as we don't know when the tab closes.
-                                        // For a long running app, this might leak memory slightly
-                                        // but for a task modal session it's acceptable or we can rely on
-                                        // the browser to handle Blob URLs.
-                                        // Actually better to not revoke immediately.
+                                        // Revoke after a delay to allow the new tab to load the PDF
+                                        setTimeout(() => URL.revokeObjectURL(url), 60000);
                                     } else {
                                         // Default download behavior
                                         const a = document.createElement('a');
