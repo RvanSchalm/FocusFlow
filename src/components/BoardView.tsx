@@ -222,7 +222,7 @@ export function BoardView() {
                                 setTitle(board.title);
                                 setIsEditingTitle(true);
                             }}
-                            className="text-2xl font-bold text-zinc-100 cursor-pointer hover:bg-zinc-800/50 px-2 rounded transition-colors"
+                            className="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent cursor-pointer hover:opacity-80 px-2 rounded transition-all"
                         >
                             {board.title}
                         </h2>
@@ -313,7 +313,7 @@ export function BoardView() {
                         <button
                             onClick={() => setViewMode("kanban")}
                             className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === "kanban"
-                                ? "bg-zinc-800 text-zinc-100 shadow-sm ring-1 ring-zinc-700"
+                                ? "bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-sm"
                                 : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50"
                                 }`}
                         >
@@ -322,7 +322,7 @@ export function BoardView() {
                         <button
                             onClick={() => setViewMode("matrix")}
                             className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === "matrix"
-                                ? "bg-zinc-800 text-zinc-100 shadow-sm ring-1 ring-zinc-700"
+                                ? "bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-sm"
                                 : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50"
                                 }`}
                         >

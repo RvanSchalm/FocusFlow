@@ -197,7 +197,7 @@ export function Sidebar() {
                 {/* Boards Section */}
                 <div>
                     <div className="px-3 mb-2 flex items-center justify-between group">
-                        <h2 className="text-xs font-bold text-zinc-500 uppercase tracking-wider group-hover:text-zinc-300 transition-colors">
+                        <h2 className="text-xs font-bold uppercase tracking-wider bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
                             Boards
                         </h2>
                         <button
@@ -244,7 +244,7 @@ export function Sidebar() {
                 {/* Labels Section */}
                 <div>
                     <div className="px-3 mb-2">
-                        <h2 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                        <h2 className="text-xs font-bold uppercase tracking-wider bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
                             Labels
                         </h2>
                     </div>
@@ -277,7 +277,7 @@ export function Sidebar() {
                 <div className="grid grid-cols-2 gap-2">
                     <button
                         onClick={exportData}
-                        className="flex items-center justify-center gap-2 px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white rounded-lg text-sm font-medium transition-colors border border-zinc-700"
+                        className="flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 text-white rounded-lg text-sm font-medium transition-all"
                         title="Export Data"
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -285,7 +285,7 @@ export function Sidebar() {
                         </svg>
                         Export
                     </button>
-                    <label className="flex items-center justify-center gap-2 px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white rounded-lg text-sm font-medium transition-colors border border-zinc-700 cursor-pointer">
+                    <label className="flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 text-white rounded-lg text-sm font-medium transition-all cursor-pointer">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 12V4m0 0l-4 4m4-4l4 4" />
                         </svg>
