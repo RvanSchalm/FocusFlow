@@ -9,7 +9,6 @@ import { Modal } from "./Modal";
 
 interface TaskModalProps {
     taskId: number;
-    onClose: () => void;
 }
 
 export function TaskModal({ taskId }: TaskModalProps) {
@@ -115,25 +114,6 @@ export function TaskModal({ taskId }: TaskModalProps) {
 
     return (
         <div className="space-y-6">
-            <style>{`
-        input[type=range]::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          height: 20px;
-          width: 20px;
-          border-radius: 50%;
-          background: currentColor;
-          cursor: pointer;
-          margin-top: -8px;
-        }
-        input[type=range]::-webkit-slider-runnable-track {
-          width: 100%;
-          height: 4px;
-          cursor: pointer;
-          background: #e5e7eb;
-          border-radius: 2px;
-        }
-      `}</style>
-
             {/* Title */}
             <div>
                 <label className="block text-xs font-bold text-zinc-500 uppercase mb-1 tracking-wider">Title</label>

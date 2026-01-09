@@ -71,68 +71,72 @@ export function BoardView() {
             return;
         }
 
-        // Column Reordering
-        if (type === "column") {
-            const newColumns = Array.from(columns || []);
-            const [removed] = newColumns.splice(source.index, 1);
-            newColumns.splice(destination.index, 0, removed);
+        try {
+            // Column Reordering
+            if (type === "column") {
+                const newColumns = Array.from(columns || []);
+                const [removed] = newColumns.splice(source.index, 1);
+                newColumns.splice(destination.index, 0, removed);
 
-            // Update order in DB atomically
-            await db.transaction("rw", db.columns, async () => {
-                await Promise.all(
-                    newColumns.map((col, index) =>
-                        db.columns.update(col.id, { order: index })
-                    )
-                );
-            });
-            return;
-        }
-
-        // Task Reordering
-        const taskId = parseInt(draggableId);
-        const sourceColId = parseInt(source.droppableId);
-        const destColId = parseInt(destination.droppableId);
-
-        const sourceTasks = tasks?.filter((t) => t.columnId === sourceColId) || [];
-        const destTasks =
-            sourceColId === destColId
-                ? sourceTasks
-                : tasks?.filter((t) => t.columnId === destColId) || [];
-
-        if (sourceColId === destColId) {
-            // Reordering within same column
-            const newTasks = Array.from(sourceTasks);
-            const [removed] = newTasks.splice(source.index, 1);
-            newTasks.splice(destination.index, 0, removed);
-
-            await db.transaction("rw", db.tasks, async () => {
-                await Promise.all(
-                    newTasks.map((t, index) => db.tasks.update(t.id, { order: index }))
-                );
-            });
-        } else {
-            // Moving to different column
-            const newSourceTasks = Array.from(sourceTasks);
-            newSourceTasks.splice(source.index, 1);
-
-            const newDestTasks = Array.from(destTasks);
-            const taskToMove = tasks?.find((t) => t.id === taskId);
-            if (taskToMove) {
-                newDestTasks.splice(destination.index, 0, { ...taskToMove, columnId: destColId });
+                // Update order in DB atomically
+                await db.transaction("rw", db.columns, async () => {
+                    await Promise.all(
+                        newColumns.map((col, index) =>
+                            db.columns.update(col.id, { order: index })
+                        )
+                    );
+                });
+                return;
             }
 
-            await db.transaction("rw", db.tasks, async () => {
-                // Update source column orders
-                await Promise.all(
-                    newSourceTasks.map((t, index) => db.tasks.update(t.id, { order: index }))
-                );
-                // Update dest column orders and move task
-                await Promise.all(
-                    newDestTasks.map((t, index) =>
-                        db.tasks.update(t.id, { columnId: destColId, order: index })
-                    )
-                );
-            });
+            // Task Reordering
+            const taskId = parseInt(draggableId, 10);
+            const sourceColId = parseInt(source.droppableId, 10);
+            const destColId = parseInt(destination.droppableId, 10);
+
+            const sourceTasks = tasks?.filter((t) => t.columnId === sourceColId) || [];
+            const destTasks =
+                sourceColId === destColId
+                    ? sourceTasks
+                    : tasks?.filter((t) => t.columnId === destColId) || [];
+
+            if (sourceColId === destColId) {
+                // Reordering within same column
+                const newTasks = Array.from(sourceTasks);
+                const [removed] = newTasks.splice(source.index, 1);
+                newTasks.splice(destination.index, 0, removed);
+
+                await db.transaction("rw", db.tasks, async () => {
+                    await Promise.all(
+                        newTasks.map((t, index) => db.tasks.update(t.id, { order: index }))
+                    );
+                });
+            } else {
+                // Moving to different column
+                const newSourceTasks = Array.from(sourceTasks);
+                newSourceTasks.splice(source.index, 1);
+
+                const newDestTasks = Array.from(destTasks);
+                const taskToMove = tasks?.find((t) => t.id === taskId);
+                if (taskToMove) {
+                    newDestTasks.splice(destination.index, 0, { ...taskToMove, columnId: destColId });
+                }
+
+                await db.transaction("rw", db.tasks, async () => {
+                    // Update source column orders
+                    await Promise.all(
+                        newSourceTasks.map((t, index) => db.tasks.update(t.id, { order: index }))
+                    );
+                    // Update dest column orders and move task
+                    await Promise.all(
+                        newDestTasks.map((t, index) =>
+                            db.tasks.update(t.id, { columnId: destColId, order: index })
+                        )
+                    );
+                });
+            }
+        } catch (error) {
+            console.error("Failed to reorder:", error);
         }
     };
 
@@ -243,7 +247,7 @@ export function BoardView() {
                 onClose={() => setSelectedTaskId(null)}
             >
                 {selectedTaskId && (
-                    <TaskModal taskId={selectedTaskId} onClose={() => setSelectedTaskId(null)} />
+                    <TaskModal taskId={selectedTaskId} />
                 )}
             </Modal>
         </div>

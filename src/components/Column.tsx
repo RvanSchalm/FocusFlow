@@ -38,10 +38,10 @@ export function Column({ column, tasks, index, onTaskClick }: ColumnProps) {
                 importance: 0,
                 labelIds: [],
                 checklist: [],
-            comments: [],
-            attachments: [],
-            order,
-        });
+                comments: [],
+                attachments: [],
+                order,
+            });
         } catch (error) {
             console.error("Failed to add task:", error);
         }
