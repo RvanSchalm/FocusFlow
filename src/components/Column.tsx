@@ -2,6 +2,7 @@ import { Draggable, Droppable } from "@hello-pangea/dnd";
 import { useState } from "react";
 import { db } from "../db";
 import type { Column as ColumnType, Task } from "../db";
+import { useConfirm } from "./ConfirmDialog";
 import { TaskCard } from "./TaskCard";
 
 interface ColumnProps {
@@ -14,6 +15,7 @@ interface ColumnProps {
 export function Column({ column, tasks, index, onTaskClick }: ColumnProps) {
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [title, setTitle] = useState(column.title);
+    const confirm = useConfirm();
 
     const handleTitleSave = async () => {
         try {
@@ -48,7 +50,13 @@ export function Column({ column, tasks, index, onTaskClick }: ColumnProps) {
     };
 
     const deleteColumn = async (id: number) => {
-        if (confirm("Delete this column and all its tasks?")) {
+        const confirmed = await confirm({
+            title: "Delete Column",
+            message: "Delete this column and all its tasks? This action cannot be undone.",
+            confirmText: "Delete",
+            variant: "danger",
+        });
+        if (confirmed) {
             try {
                 await db.transaction("rw", db.columns, db.tasks, async () => {
                     await db.columns.delete(id);

@@ -2,6 +2,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useState, useEffect, useRef } from "react";
 import { db } from "../db";
 import type { Task } from "../db";
+import { useConfirm } from "./ConfirmDialog";
 import { RichTextEditor } from "./RichTextEditor";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 
@@ -14,6 +15,7 @@ interface TaskModalProps {
 export function TaskModal({ taskId }: TaskModalProps) {
     const task = useLiveQuery(() => db.tasks.get(taskId), [taskId]);
     const labels = useLiveQuery(() => db.labels.toArray());
+    const confirm = useConfirm();
 
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
@@ -459,7 +461,13 @@ export function TaskModal({ taskId }: TaskModalProps) {
                                 <button
                                     onClick={async (e) => {
                                         e.stopPropagation();
-                                        if (confirm(`Are you sure you want to delete "${attachment.name}"?`)) {
+                                        const confirmed = await confirm({
+                                            title: "Delete Attachment",
+                                            message: `Are you sure you want to delete "${attachment.name}"?`,
+                                            confirmText: "Delete",
+                                            variant: "danger",
+                                        });
+                                        if (confirmed) {
                                             const newAttachments = (task.attachments || []).filter(a => a.id !== attachment.id);
                                             await handleSave({ attachments: newAttachments });
                                         }

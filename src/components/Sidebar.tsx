@@ -2,6 +2,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { db } from "../db";
+import { useConfirm } from "./ConfirmDialog";
 import { LabelManager } from "./LabelManager";
 import { Modal } from "./Modal";
 
@@ -10,6 +11,7 @@ export function Sidebar() {
     const labels = useLiveQuery(() => db.labels.toArray());
     const navigate = useNavigate();
     const location = useLocation();
+    const confirm = useConfirm();
     const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
 
     const createBoard = async () => {
@@ -26,7 +28,13 @@ export function Sidebar() {
 
     const deleteBoard = async (e: React.MouseEvent, id: number) => {
         e.stopPropagation();
-        if (confirm("Are you sure you want to delete this board and all its columns/tasks?")) {
+        const confirmed = await confirm({
+            title: "Delete Board",
+            message: "Are you sure you want to delete this board and all its columns/tasks? This action cannot be undone.",
+            confirmText: "Delete",
+            variant: "danger",
+        });
+        if (confirmed) {
             try {
                 await db.transaction("rw", db.boards, db.columns, db.tasks, async () => {
                     // Delete all tasks in this board
@@ -49,7 +57,13 @@ export function Sidebar() {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        if (!confirm("This will overwrite all existing data/boards. Are you sure?")) {
+        const confirmed = await confirm({
+            title: "Import Data",
+            message: "This will overwrite all existing data/boards. Are you sure you want to continue?",
+            confirmText: "Import",
+            variant: "warning",
+        });
+        if (!confirmed) {
             e.target.value = ""; // Reset input
             return;
         }

@@ -3,9 +3,11 @@ import { useState } from "react";
 import { db } from "../db";
 import type { Label } from "../db";
 import { ColorPicker } from "./ColorPicker";
+import { useConfirm } from "./ConfirmDialog";
 
 export function LabelManager() {
     const labels = useLiveQuery(() => db.labels.toArray());
+    const confirm = useConfirm();
 
     // State for form
     const [name, setName] = useState("");
@@ -42,7 +44,13 @@ export function LabelManager() {
     };
 
     const deleteLabel = async (id: number) => {
-        if (confirm("Delete this label?")) {
+        const confirmed = await confirm({
+            title: "Delete Label",
+            message: "Delete this label? It will be removed from all tasks.",
+            confirmText: "Delete",
+            variant: "danger",
+        });
+        if (confirmed) {
             try {
                 await db.labels.delete(id);
                 if (editingId === id) {
