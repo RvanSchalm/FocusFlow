@@ -1,8 +1,17 @@
 import { DragDropContext, Droppable, type DropResult } from "@hello-pangea/dnd";
-import { useLiveQuery } from "dexie-react-hooks";
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { db } from "../db";
+import { 
+    getBoard, 
+    getColumns, 
+    getTasks, 
+    getLabels,
+    updateBoard,
+    addColumn as addColumnToDb,
+    bulkUpdateColumns,
+    bulkUpdateTasks
+} from "../services/dataService";
+import { useData } from "../services/useData";
 import { Column } from "./Column";
 import { MatrixView } from "./MatrixView";
 import { Modal } from "./Modal";
@@ -12,16 +21,22 @@ export function BoardView() {
     const { boardId } = useParams();
     const id = parseInt(boardId || "0", 10);
 
-    const board = useLiveQuery(() => db.boards.get(id), [id]);
-    const columns = useLiveQuery(
-        () => db.columns.where("boardId").equals(id).sortBy("order"),
+    const board = useData(() => getBoard(id), [id]);
+    const columns = useData(
+        async () => {
+            const cols = await getColumns(id);
+            return cols.sort((a, b) => a.order - b.order);
+        },
         [id]
     );
-    const tasks = useLiveQuery(
-        () => db.tasks.where("boardId").equals(id).sortBy("order"),
+    const tasks = useData(
+        async () => {
+            const t = await getTasks(id);
+            return t.sort((a, b) => a.order - b.order);
+        },
         [id]
     );
-    const labels = useLiveQuery(() => db.labels.toArray());
+    const labels = useData(() => getLabels(), []);
 
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [title, setTitle] = useState("");
@@ -68,7 +83,7 @@ export function BoardView() {
         try {
             const newTitle = title.trim() || "New Board";
             if (newTitle !== board?.title) {
-                await db.boards.update(id, { title: newTitle });
+                await updateBoard(id, { title: newTitle });
             }
             setTitle(newTitle);
         } catch (error) {
@@ -80,7 +95,7 @@ export function BoardView() {
     const addColumn = async () => {
         try {
             const order = columns ? columns.length : 0;
-            await db.columns.add({
+            await addColumnToDb({
                 boardId: id,
                 title: "New Column",
                 order,
@@ -110,13 +125,12 @@ export function BoardView() {
                 newColumns.splice(destination.index, 0, removed);
 
                 // Update order in DB atomically
-                await db.transaction("rw", db.columns, async () => {
-                    await Promise.all(
-                        newColumns.map((col, index) =>
-                            db.columns.update(col.id, { order: index })
-                        )
-                    );
-                });
+                await bulkUpdateColumns(
+                    newColumns.map((col, index) => ({
+                        id: col.id,
+                        changes: { order: index }
+                    }))
+                );
                 return;
             }
 
@@ -137,11 +151,12 @@ export function BoardView() {
                 const [removed] = newTasks.splice(source.index, 1);
                 newTasks.splice(destination.index, 0, removed);
 
-                await db.transaction("rw", db.tasks, async () => {
-                    await Promise.all(
-                        newTasks.map((t, index) => db.tasks.update(t.id, { order: index }))
-                    );
-                });
+                await bulkUpdateTasks(
+                    newTasks.map((t, index) => ({
+                        id: t.id,
+                        changes: { order: index }
+                    }))
+                );
             } else {
                 // Moving to different column
                 const newSourceTasks = Array.from(sourceTasks);
@@ -153,18 +168,19 @@ export function BoardView() {
                     newDestTasks.splice(destination.index, 0, { ...taskToMove, columnId: destColId });
                 }
 
-                await db.transaction("rw", db.tasks, async () => {
-                    // Update source column orders
-                    await Promise.all(
-                        newSourceTasks.map((t, index) => db.tasks.update(t.id, { order: index }))
-                    );
-                    // Update dest column orders and move task
-                    await Promise.all(
-                        newDestTasks.map((t, index) =>
-                            db.tasks.update(t.id, { columnId: destColId, order: index })
-                        )
-                    );
-                });
+                // Update source column orders
+                const sourceUpdates = newSourceTasks.map((t, index) => ({
+                    id: t.id,
+                    changes: { order: index }
+                }));
+                
+                // Update dest column orders and move task
+                const destUpdates = newDestTasks.map((t, index) => ({
+                    id: t.id,
+                    changes: { columnId: destColId, order: index }
+                }));
+
+                await bulkUpdateTasks([...sourceUpdates, ...destUpdates]);
             }
         } catch (error) {
             console.error("Failed to reorder:", error);

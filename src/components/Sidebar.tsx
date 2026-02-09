@@ -1,14 +1,21 @@
-import { useLiveQuery } from "dexie-react-hooks";
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { db } from "../db";
+import { 
+    getBoards, 
+    getLabels, 
+    addBoard, 
+    deleteBoard as deleteBoardFromDb,
+    exportAllData,
+    importAllData
+} from "../services/dataService";
+import { useData } from "../services/useData";
 import { useConfirm } from "./ConfirmDialog";
 import { LabelManager } from "./LabelManager";
 import { Modal } from "./Modal";
 
 export function Sidebar() {
-    const boards = useLiveQuery(() => db.boards.toArray());
-    const labels = useLiveQuery(() => db.labels.toArray());
+    const boards = useData(() => getBoards(), []);
+    const labels = useData(() => getLabels(), []);
     const navigate = useNavigate();
     const location = useLocation();
     const confirm = useConfirm();
@@ -16,7 +23,7 @@ export function Sidebar() {
 
     const createBoard = async () => {
         try {
-            const id = await db.boards.add({
+            const id = await addBoard({
                 title: "New Board",
                 createdAt: new Date(),
             });
@@ -36,14 +43,7 @@ export function Sidebar() {
         });
         if (confirmed) {
             try {
-                await db.transaction("rw", db.boards, db.columns, db.tasks, async () => {
-                    // Delete all tasks in this board
-                    await db.tasks.where("boardId").equals(id).delete();
-                    // Delete all columns in this board
-                    await db.columns.where("boardId").equals(id).delete();
-                    // Delete the board itself
-                    await db.boards.delete(id);
-                });
+                await deleteBoardFromDb(id);
                 if (location.pathname === `/board/${id}`) {
                     navigate("/");
                 }
@@ -79,49 +79,14 @@ export function Sidebar() {
                     throw new Error('Invalid data format: expected an object');
                 }
 
-                // Validate arrays if they exist
-                if (data.boards && !Array.isArray(data.boards)) {
-                    throw new Error('Invalid data format: boards must be an array');
+                const result = await importAllData(data);
+                
+                if (result.success) {
+                    alert("Import successful!");
+                    window.location.reload();
+                } else {
+                    throw new Error(result.error || 'Import failed');
                 }
-                if (data.columns && !Array.isArray(data.columns)) {
-                    throw new Error('Invalid data format: columns must be an array');
-                }
-                if (data.tasks && !Array.isArray(data.tasks)) {
-                    throw new Error('Invalid data format: tasks must be an array');
-                }
-                if (data.labels && !Array.isArray(data.labels)) {
-                    throw new Error('Invalid data format: labels must be an array');
-                }
-
-                // Convert Base64 attachments back to Blobs
-                if (data.tasks) {
-                    for (const task of data.tasks) {
-                        if (task.attachments) {
-                            for (const attachment of task.attachments) {
-                                if (typeof attachment.data === 'string') {
-                                    const response = await fetch(attachment.data);
-                                    const blob = await response.blob();
-                                    attachment.data = blob;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                await db.transaction("rw", db.boards, db.columns, db.tasks, db.labels, async () => {
-                    await db.boards.clear();
-                    await db.columns.clear();
-                    await db.tasks.clear();
-                    await db.labels.clear();
-
-                    if (data.boards?.length) await db.boards.bulkAdd(data.boards);
-                    if (data.columns?.length) await db.columns.bulkAdd(data.columns);
-                    if (data.labels?.length) await db.labels.bulkAdd(data.labels);
-                    if (data.tasks?.length) await db.tasks.bulkAdd(data.tasks);
-                });
-
-                alert("Import successful!");
-                window.location.reload();
             } catch (err) {
                 console.error("Import failed:", err);
                 alert("Failed to import data. Check console for details.");
@@ -133,42 +98,9 @@ export function Sidebar() {
 
     const exportData = async () => {
         try {
-            const allBoards = await db.boards.toArray();
-            const allColumns = await db.columns.toArray();
-            const allTasks = await db.tasks.toArray();
-            const allLabels = await db.labels.toArray();
+            const exportedData = await exportAllData();
 
-            // Process tasks to convert Blobs to Base64
-            const tasksWithBase64 = await Promise.all(allTasks.map(async (task) => {
-                const attachments = await Promise.all((task.attachments || []).map(async (attachment) => {
-                    if (attachment.data instanceof Blob) {
-                        return new Promise((resolve, reject) => {
-                            const reader = new FileReader();
-                            reader.onloadend = () => {
-                                resolve({
-                                    ...attachment,
-                                    data: reader.result // This is a Data URL (Base64)
-                                });
-                            };
-                            reader.onerror = reject;
-                            reader.readAsDataURL(attachment.data);
-                        });
-                    }
-                    return attachment;
-                }));
-                return { ...task, attachments };
-            }));
-
-            const data = {
-                boards: allBoards,
-                columns: allColumns,
-                labels: allLabels,
-                tasks: tasksWithBase64,
-                exportDate: new Date().toISOString(),
-                version: 1
-            };
-
-            const json = JSON.stringify(data, null, 2);
+            const json = JSON.stringify(exportedData, null, 2);
             const blob = new Blob([json], { type: "application/json" });
             const url = URL.createObjectURL(blob);
 

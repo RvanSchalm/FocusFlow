@@ -1,4 +1,4 @@
-import { BrowserRouter, Link, Route, Routes } from "react-router-dom";
+import { HashRouter, Link, Route, Routes } from "react-router-dom";
 import { BoardView } from "./components/BoardView";
 import { ConfirmProvider } from "./components/ConfirmDialog";
 import { Sidebar } from "./components/Sidebar";
@@ -6,7 +6,7 @@ import { Sidebar } from "./components/Sidebar";
 function App() {
   return (
     <ConfirmProvider>
-      <BrowserRouter>
+      <HashRouter>
         <div className="flex h-screen bg-zinc-950 text-zinc-100">
           <Sidebar />
           <main className="flex-1 overflow-hidden">
@@ -38,7 +38,7 @@ function App() {
             </Routes>
           </main>
         </div>
-      </BrowserRouter>
+      </HashRouter>
     </ConfirmProvider>
   );
 }

@@ -1,7 +1,7 @@
-import { useLiveQuery } from "dexie-react-hooks";
 import { useState, useEffect, useRef } from "react";
-import { db } from "../db";
-import type { Task } from "../db";
+import { getTask, getLabels, updateTask } from "../services/dataService";
+import type { Task } from "../services/dataService";
+import { useData } from "../services/useData";
 import { useConfirm } from "./ConfirmDialog";
 import { RichTextEditor } from "./RichTextEditor";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
@@ -13,8 +13,8 @@ interface TaskModalProps {
 }
 
 export function TaskModal({ taskId }: TaskModalProps) {
-    const task = useLiveQuery(() => db.tasks.get(taskId), [taskId]);
-    const labels = useLiveQuery(() => db.labels.toArray());
+    const task = useData(() => getTask(taskId), [taskId]);
+    const labels = useData(() => getLabels(), []);
     const confirm = useConfirm();
 
     const [title, setTitle] = useState("");
@@ -59,7 +59,7 @@ export function TaskModal({ taskId }: TaskModalProps) {
 
     const handleSave = async (updates: Partial<Task>) => {
         try {
-            await db.tasks.update(taskId, updates);
+            await updateTask(taskId, updates);
         } catch (error) {
             console.error("Failed to save task:", error);
         }
@@ -373,17 +373,22 @@ export function TaskModal({ taskId }: TaskModalProps) {
                             if (!e.target.files || e.target.files.length === 0) return;
                             const file = e.target.files[0];
 
-                            const newAttachment = {
-                                id: crypto.randomUUID(),
-                                name: file.name,
-                                type: file.type,
-                                size: file.size,
-                                uploadedAt: new Date(),
-                                data: new Blob([file], { type: file.type })
-                            };
+                            // Convert file to Base64
+                            const reader = new FileReader();
+                            reader.onloadend = async () => {
+                                const newAttachment = {
+                                    id: crypto.randomUUID(),
+                                    name: file.name,
+                                    type: file.type,
+                                    size: file.size,
+                                    uploadedAt: new Date().toISOString(),
+                                    data: reader.result as string // Base64 data URL
+                                };
 
-                            const newAttachments = [...(task.attachments || []), newAttachment];
-                            await handleSave({ attachments: newAttachments });
+                                const newAttachments = [...(task.attachments || []), newAttachment];
+                                await handleSave({ attachments: newAttachments });
+                            };
+                            reader.readAsDataURL(file);
                             e.target.value = ''; // Reset input
                         }}
                     />
@@ -401,8 +406,8 @@ export function TaskModal({ taskId }: TaskModalProps) {
                             <div
                                 className="flex items-center gap-3 overflow-hidden flex-1 cursor-pointer"
                                 onClick={() => {
-                                    const blob = attachment.data;
-                                    const url = URL.createObjectURL(blob);
+                                    // attachment.data is now a Base64 data URL string
+                                    const url = attachment.data;
 
                                     if (attachment.type.startsWith('image/')) {
                                         // Revoke previous preview URL if exists
@@ -412,15 +417,12 @@ export function TaskModal({ taskId }: TaskModalProps) {
                                         setPreviewImage(url);
                                     } else if (attachment.type === 'application/pdf') {
                                         window.open(url, '_blank');
-                                        // Revoke after a delay to allow the new tab to load the PDF
-                                        setTimeout(() => URL.revokeObjectURL(url), 60000);
                                     } else {
-                                        // Default download behavior
+                                        // Default download behavior - data is already a data URL
                                         const a = document.createElement('a');
                                         a.href = url;
                                         a.download = attachment.name;
                                         a.click();
-                                        URL.revokeObjectURL(url);
                                     }
                                 }}
                             >
@@ -443,12 +445,11 @@ export function TaskModal({ taskId }: TaskModalProps) {
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        const url = URL.createObjectURL(attachment.data);
+                                        // attachment.data is a Base64 data URL
                                         const a = document.createElement('a');
-                                        a.href = url;
+                                        a.href = attachment.data;
                                         a.download = attachment.name;
                                         a.click();
-                                        URL.revokeObjectURL(url);
                                     }}
                                     className="p-1.5 text-zinc-400 hover:text-indigo-400 hover:bg-zinc-800 rounded transition-colors"
                                     title="Download"

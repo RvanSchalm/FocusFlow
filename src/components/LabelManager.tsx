@@ -1,12 +1,12 @@
-import { useLiveQuery } from "dexie-react-hooks";
 import { useState } from "react";
-import { db } from "../db";
-import type { Label } from "../db";
+import { getLabels, addLabel as addLabelToDb, updateLabel, deleteLabel as deleteLabelFromDb } from "../services/dataService";
+import type { Label } from "../services/dataService";
+import { useData } from "../services/useData";
 import { ColorPicker } from "./ColorPicker";
 import { useConfirm } from "./ConfirmDialog";
 
 export function LabelManager() {
-    const labels = useLiveQuery(() => db.labels.toArray());
+    const labels = useData(() => getLabels(), []);
     const confirm = useConfirm();
 
     // State for form
@@ -19,10 +19,10 @@ export function LabelManager() {
 
         try {
             if (editingId) {
-                await db.labels.update(editingId, { name: name.trim(), color });
+                await updateLabel(editingId, { name: name.trim(), color });
                 setEditingId(null);
             } else {
-                await db.labels.add({ name: name.trim(), color });
+                await addLabelToDb({ name: name.trim(), color });
             }
             setName("");
             setColor("#3B82F6");
@@ -52,7 +52,7 @@ export function LabelManager() {
         });
         if (confirmed) {
             try {
-                await db.labels.delete(id);
+                await deleteLabelFromDb(id);
                 if (editingId === id) {
                     cancelEditing();
                 }

@@ -1,7 +1,7 @@
 import { Draggable, Droppable } from "@hello-pangea/dnd";
 import { useState } from "react";
-import { db } from "../db";
-import type { Column as ColumnType, Task } from "../db";
+import { updateColumn, deleteColumn as deleteColumnFromDb, addTask as addTaskToDb } from "../services/dataService";
+import type { Column as ColumnType, Task } from "../services/dataService";
 import { useConfirm } from "./ConfirmDialog";
 import { TaskCard } from "./TaskCard";
 
@@ -21,7 +21,7 @@ export function Column({ column, tasks, index, onTaskClick }: ColumnProps) {
         try {
             const newTitle = title.trim() || "New Column";
             if (newTitle !== column.title) {
-                await db.columns.update(column.id, { title: newTitle });
+                await updateColumn(column.id, { title: newTitle });
             }
             setTitle(newTitle);
         } catch (error) {
@@ -33,7 +33,7 @@ export function Column({ column, tasks, index, onTaskClick }: ColumnProps) {
     const addTask = async () => {
         try {
             const order = tasks.length;
-            await db.tasks.add({
+            await addTaskToDb({
                 boardId: column.boardId,
                 columnId: column.id,
                 title: "New Task",
@@ -60,10 +60,7 @@ export function Column({ column, tasks, index, onTaskClick }: ColumnProps) {
         });
         if (confirmed) {
             try {
-                await db.transaction("rw", db.columns, db.tasks, async () => {
-                    await db.columns.delete(id);
-                    await db.tasks.where("columnId").equals(id).delete();
-                });
+                await deleteColumnFromDb(id);
             } catch (error) {
                 console.error("Failed to delete column:", error);
             }

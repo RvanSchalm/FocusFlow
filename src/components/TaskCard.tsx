@@ -1,7 +1,7 @@
 import { Draggable } from "@hello-pangea/dnd";
-import type { Task } from "../db";
-import { db } from "../db";
-import { useLiveQuery } from "dexie-react-hooks";
+import type { Task } from "../services/dataService";
+import { getLabels, deleteTask } from "../services/dataService";
+import { useData } from "../services/useData";
 
 interface TaskCardProps {
     task: Task;
@@ -10,12 +10,12 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task, index, onClick }: TaskCardProps) {
-    const labels = useLiveQuery(() => db.labels.toArray());
+    const labels = useData(() => getLabels(), []);
 
     const handleDelete = async (e: React.MouseEvent) => {
         e.stopPropagation();
         try {
-            await db.tasks.delete(task.id);
+            await deleteTask(task.id);
         } catch (error) {
             console.error("Failed to delete task:", error);
         }
