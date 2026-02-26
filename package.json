@@ -38,7 +38,8 @@
         "nsis",
         "portable"
       ],
-      "icon": "public/icon.ico"
+      "icon": "public/icon.ico",
+      "signAndEditExecutable": false
     },
     "linux": {
       "target": [
