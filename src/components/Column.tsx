@@ -68,7 +68,7 @@ export function Column({ column, tasks, index, onTaskClick }: ColumnProps) {
     };
 
     return (
-        <Draggable draggableId={column.id.toString()} index={index}>
+        <Draggable draggableId={`col-${column.id}`} index={index}>
             {(provided) => (
                 <div
                     ref={provided.innerRef}
@@ -110,7 +110,7 @@ export function Column({ column, tasks, index, onTaskClick }: ColumnProps) {
                         </button>
                     </div>
 
-                    <Droppable droppableId={column.id.toString()} type="task">
+                    <Droppable droppableId={`col-${column.id}`} type="task">
                         {(provided, snapshot) => (
                             <div
                                 ref={provided.innerRef}

@@ -29,7 +29,11 @@ export function Modal({ isOpen, onClose, children, title, className = "max-w-2xl
     return createPortal(
         <div
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
-            onClick={onClose}
+            onMouseDown={(e) => {
+                if (e.target === e.currentTarget) {
+                    onClose();
+                }
+            }}
         >
             <div
                 className={`bg-zinc-900 rounded-2xl shadow-2xl w-full max-h-[90vh] overflow-y-auto border border-zinc-800 animate-in zoom-in-95 duration-200 ${className}`}

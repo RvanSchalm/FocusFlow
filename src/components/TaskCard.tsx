@@ -28,7 +28,7 @@ export function TaskCard({ task, index, onClick }: TaskCardProps) {
     const taskLabels = labels?.filter((l) => (task.labelIds || []).includes(l.id!)) || [];
 
     return (
-        <Draggable draggableId={task.id.toString()} index={index}>
+        <Draggable draggableId={`task-${task.id}`} index={index}>
             {(provided, snapshot) => (
                 <div
                     ref={provided.innerRef}

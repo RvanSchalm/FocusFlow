@@ -1,10 +1,10 @@
 import { DragDropContext, Droppable, type DropResult } from "@hello-pangea/dnd";
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { 
-    getBoard, 
-    getColumns, 
-    getTasks, 
+import {
+    getBoard,
+    getColumns,
+    getTasks,
     getLabels,
     updateBoard,
     addColumn as addColumnToDb,
@@ -32,7 +32,7 @@ export function BoardView() {
     const tasks = useData(
         async () => {
             const t = await getTasks(id);
-            return t.sort((a, b) => a.order - b.order);
+            return t; // sorted per-column at render time, not globally
         },
         [id]
     );
@@ -135,15 +135,15 @@ export function BoardView() {
             }
 
             // Task Reordering
-            const taskId = parseInt(draggableId, 10);
-            const sourceColId = parseInt(source.droppableId, 10);
-            const destColId = parseInt(destination.droppableId, 10);
+            const taskId = parseInt(draggableId.replace("task-", ""), 10);
+            const sourceColId = parseInt(source.droppableId.replace("col-", ""), 10);
+            const destColId = parseInt(destination.droppableId.replace("col-", ""), 10);
 
-            const sourceTasks = tasks?.filter((t) => t.columnId === sourceColId) || [];
+            const sourceTasks = (tasks?.filter((t) => t.columnId === sourceColId) || []).sort((a, b) => a.order - b.order);
             const destTasks =
                 sourceColId === destColId
                     ? sourceTasks
-                    : tasks?.filter((t) => t.columnId === destColId) || [];
+                    : (tasks?.filter((t) => t.columnId === destColId) || []).sort((a, b) => a.order - b.order);
 
             if (sourceColId === destColId) {
                 // Reordering within same column
@@ -173,7 +173,7 @@ export function BoardView() {
                     id: t.id,
                     changes: { order: index }
                 }));
-                
+
                 // Update dest column orders and move task
                 const destUpdates = newDestTasks.map((t, index) => ({
                     id: t.id,
@@ -299,11 +299,10 @@ export function BoardView() {
                                                 }}
                                                 className="w-full flex items-center gap-3 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 transition-colors"
                                             >
-                                                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
-                                                    selectedColumnIds.includes(column.id)
+                                                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${selectedColumnIds.includes(column.id)
                                                         ? "bg-indigo-500 border-indigo-500"
                                                         : "border-zinc-600 bg-transparent"
-                                                }`}>
+                                                    }`}>
                                                     {selectedColumnIds.includes(column.id) && (
                                                         <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -363,7 +362,7 @@ export function BoardView() {
                                         <Column
                                             key={column.id}
                                             column={column}
-                                            tasks={tasks?.filter((t) => t.columnId === column.id) || []}
+                                            tasks={(tasks?.filter((t) => t.columnId === column.id) || []).sort((a, b) => a.order - b.order)}
                                             index={index}
                                             onTaskClick={setSelectedTaskId}
                                         />

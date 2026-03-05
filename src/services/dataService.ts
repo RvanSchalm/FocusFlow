@@ -7,12 +7,14 @@ export interface Board {
     id: number;
     title: string;
     createdAt: Date | string;
+    order?: number;
 }
 
 export interface Label {
     id: number;
     name: string;
     color: string;
+    order?: number;
 }
 
 export interface Column {
@@ -105,7 +107,7 @@ const getDefaultSettings = (): FocusFlowSettings => ({
 // Initialize data from storage
 export const initializeData = async (): Promise<FocusFlowData> => {
     if (dataCache) return dataCache;
-    
+
     const api = getElectronAPI();
     if (api) {
         dataCache = await api.loadData() as FocusFlowData;
@@ -114,16 +116,16 @@ export const initializeData = async (): Promise<FocusFlowData> => {
         const stored = localStorage.getItem('focusflow-data');
         dataCache = stored ? JSON.parse(stored) : getDefaultData();
     }
-    
+
     return dataCache || getDefaultData();
 };
 
 // Save data to storage
 const persistData = async (): Promise<boolean> => {
     if (!dataCache) return false;
-    
+
     dataCache.lastModified = new Date().toISOString();
-    
+
     const api = getElectronAPI();
     if (api) {
         // Convert dates to strings for JSON storage
@@ -180,6 +182,18 @@ export const deleteBoard = async (id: number): Promise<void> => {
     // Also delete associated columns and tasks
     data.columns = data.columns.filter(c => c.boardId !== id);
     data.tasks = data.tasks.filter(t => t.boardId !== id);
+    await persistData();
+    notifyListeners();
+};
+
+export const bulkUpdateBoards = async (updates: { id: number; changes: Partial<Board> }[]): Promise<void> => {
+    const data = await initializeData();
+    for (const update of updates) {
+        const index = data.boards.findIndex(b => b.id === update.id);
+        if (index !== -1) {
+            data.boards[index] = { ...data.boards[index], ...update.changes };
+        }
+    }
     await persistData();
     notifyListeners();
 };
@@ -283,6 +297,18 @@ export const deleteLabel = async (id: number): Promise<void> => {
     notifyListeners();
 };
 
+export const bulkUpdateLabels = async (updates: { id: number; changes: Partial<Label> }[]): Promise<void> => {
+    const data = await initializeData();
+    for (const update of updates) {
+        const index = data.labels.findIndex(l => l.id === update.id);
+        if (index !== -1) {
+            data.labels[index] = { ...data.labels[index], ...update.changes };
+        }
+    }
+    await persistData();
+    notifyListeners();
+};
+
 // ==================== TASKS ====================
 
 export const getTasks = async (boardId?: number): Promise<Task[]> => {
@@ -361,8 +387,8 @@ export const exportAllData = async (): Promise<{
     }
 };
 
-export const importAllData = async (importData: { 
-    data?: FocusFlowData; 
+export const importAllData = async (importData: {
+    data?: FocusFlowData;
     settings?: FocusFlowSettings;
     // Support legacy format with boards/columns/tasks/labels at root
     boards?: Board[];
@@ -421,7 +447,7 @@ export const importAllData = async (importData: {
 
 export const getSettings = async (): Promise<FocusFlowSettings> => {
     if (settingsCache) return settingsCache;
-    
+
     const api = getElectronAPI();
     if (api) {
         settingsCache = await api.loadSettings();
@@ -429,14 +455,14 @@ export const getSettings = async (): Promise<FocusFlowSettings> => {
         const stored = localStorage.getItem('focusflow-settings');
         settingsCache = stored ? JSON.parse(stored) : getDefaultSettings();
     }
-    
+
     return settingsCache || getDefaultSettings();
 };
 
 export const updateSettings = async (updates: Partial<FocusFlowSettings>): Promise<void> => {
     const current = await getSettings();
     settingsCache = { ...current, ...updates };
-    
+
     const api = getElectronAPI();
     if (api) {
         await api.saveSettings(settingsCache);

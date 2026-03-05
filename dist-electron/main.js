@@ -1,126 +1,168 @@
-import { ipcMain as s, app as a, BrowserWindow as S } from "electron";
-import { dirname as _, join as r } from "path";
-import { existsSync as l, readFileSync as m, writeFileSync as D, mkdirSync as I } from "fs";
-import { fileURLToPath as R } from "url";
-const b = R(import.meta.url), g = _(b), c = () => {
-  const e = a.getPath("userData");
-  return r(e, "focusflow-data.json");
-}, u = () => {
-  const e = a.getPath("userData");
-  return r(e, "focusflow-settings.json");
-}, d = () => {
-  const e = a.getPath("userData");
-  l(e) || I(e, { recursive: !0 });
-}, f = () => ({
+import { ipcMain, app, BrowserWindow } from "electron";
+import { dirname, join } from "path";
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
+import { fileURLToPath } from "url";
+const __filename$1 = fileURLToPath(import.meta.url);
+const __dirname$1 = dirname(__filename$1);
+const getDataPath = () => {
+  const userDataPath = app.getPath("userData");
+  return join(userDataPath, "focusflow-data.json");
+};
+const getSettingsPath = () => {
+  const userDataPath = app.getPath("userData");
+  return join(userDataPath, "focusflow-settings.json");
+};
+const ensureDataDir = () => {
+  const userDataPath = app.getPath("userData");
+  if (!existsSync(userDataPath)) {
+    mkdirSync(userDataPath, { recursive: true });
+  }
+};
+const getDefaultData = () => ({
   boards: [],
   columns: [],
   tasks: [],
   labels: [],
   version: 1,
   lastModified: (/* @__PURE__ */ new Date()).toISOString()
-}), w = () => ({
+});
+const getDefaultSettings = () => ({
   windowBounds: { width: 1200, height: 800 },
   lastOpenedBoardId: null,
   theme: "dark"
-}), y = () => {
+});
+const loadData = () => {
   try {
-    d();
-    const e = c();
-    if (l(e)) {
-      const t = m(e, "utf-8");
-      return JSON.parse(t);
+    ensureDataDir();
+    const dataPath = getDataPath();
+    if (existsSync(dataPath)) {
+      const content = readFileSync(dataPath, "utf-8");
+      return JSON.parse(content);
     }
-    return f();
-  } catch (e) {
-    return console.error("Failed to load data:", e), f();
-  }
-}, P = (e) => {
-  try {
-    d();
-    const t = c(), o = {
-      ...e,
-      lastModified: (/* @__PURE__ */ new Date()).toISOString()
-    };
-    return D(t, JSON.stringify(o, null, 2), "utf-8"), !0;
-  } catch (t) {
-    return console.error("Failed to save data:", t), !1;
-  }
-}, i = () => {
-  try {
-    d();
-    const e = u();
-    if (l(e)) {
-      const t = m(e, "utf-8");
-      return JSON.parse(t);
-    }
-    return w();
-  } catch (e) {
-    return console.error("Failed to load settings:", e), w();
-  }
-}, h = (e) => {
-  try {
-    d();
-    const t = u();
-    return D(t, JSON.stringify(e, null, 2), "utf-8"), !0;
-  } catch (t) {
-    return console.error("Failed to save settings:", t), !1;
+    return getDefaultData();
+  } catch (error) {
+    console.error("Failed to load data:", error);
+    return getDefaultData();
   }
 };
-let n = null;
-const p = () => {
-  const t = i().windowBounds || { width: 1200, height: 800 };
-  n = new S({
-    width: t.width,
-    height: t.height,
-    x: t.x,
-    y: t.y,
+const saveData = (data) => {
+  try {
+    ensureDataDir();
+    const dataPath = getDataPath();
+    const dataWithMeta = {
+      ...data,
+      lastModified: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    writeFileSync(dataPath, JSON.stringify(dataWithMeta, null, 2), "utf-8");
+    return true;
+  } catch (error) {
+    console.error("Failed to save data:", error);
+    return false;
+  }
+};
+const loadSettings = () => {
+  try {
+    ensureDataDir();
+    const settingsPath = getSettingsPath();
+    if (existsSync(settingsPath)) {
+      const content = readFileSync(settingsPath, "utf-8");
+      return JSON.parse(content);
+    }
+    return getDefaultSettings();
+  } catch (error) {
+    console.error("Failed to load settings:", error);
+    return getDefaultSettings();
+  }
+};
+const saveSettings = (settings) => {
+  try {
+    ensureDataDir();
+    const settingsPath = getSettingsPath();
+    writeFileSync(settingsPath, JSON.stringify(settings, null, 2), "utf-8");
+    return true;
+  } catch (error) {
+    console.error("Failed to save settings:", error);
+    return false;
+  }
+};
+let mainWindow = null;
+const createWindow = () => {
+  const settings = loadSettings();
+  const bounds = settings.windowBounds || { width: 1200, height: 800 };
+  mainWindow = new BrowserWindow({
+    width: bounds.width,
+    height: bounds.height,
+    x: bounds.x,
+    y: bounds.y,
     minWidth: 800,
     minHeight: 600,
     webPreferences: {
-      preload: r(g, "preload.js"),
-      contextIsolation: !0,
-      nodeIntegration: !1
+      preload: join(__dirname$1, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false
     },
     backgroundColor: "#09090b",
     // zinc-950
     titleBarStyle: "hiddenInset",
-    show: !1
-  }), n.once("ready-to-show", () => {
-    n?.show();
-  }), n.on("close", () => {
-    if (n) {
-      const o = n.getBounds(), v = i();
-      h({ ...v, windowBounds: o });
+    show: false
+  });
+  mainWindow.once("ready-to-show", () => {
+    mainWindow?.show();
+  });
+  mainWindow.on("close", () => {
+    if (mainWindow) {
+      const bounds2 = mainWindow.getBounds();
+      const currentSettings = loadSettings();
+      saveSettings({ ...currentSettings, windowBounds: bounds2 });
     }
-  }), process.env.VITE_DEV_SERVER_URL ? (n.loadURL(process.env.VITE_DEV_SERVER_URL), n.webContents.openDevTools()) : n.loadFile(r(g, "../dist/index.html"));
+  });
+  if (process.env.VITE_DEV_SERVER_URL) {
+    mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
+    mainWindow.webContents.openDevTools();
+  } else {
+    mainWindow.loadFile(join(__dirname$1, "../dist/index.html"));
+  }
 };
-s.handle("data:load", () => y());
-s.handle("data:save", (e, t) => P(t));
-s.handle("settings:load", () => i());
-s.handle("settings:save", (e, t) => h(t));
-s.handle("app:getDataPath", () => c());
-s.handle("app:getSettingsPath", () => u());
-s.handle("data:exportAll", () => {
-  const e = y(), t = i();
+ipcMain.handle("data:load", () => loadData());
+ipcMain.handle("data:save", (_event, data) => saveData(data));
+ipcMain.handle("settings:load", () => loadSettings());
+ipcMain.handle("settings:save", (_event, settings) => saveSettings(settings));
+ipcMain.handle("app:getDataPath", () => getDataPath());
+ipcMain.handle("app:getSettingsPath", () => getSettingsPath());
+ipcMain.handle("data:exportAll", () => {
+  const data = loadData();
+  const settings = loadSettings();
   return {
-    data: e,
-    settings: t,
+    data,
+    settings,
     exportDate: (/* @__PURE__ */ new Date()).toISOString(),
-    appVersion: a.getVersion()
+    appVersion: app.getVersion()
   };
 });
-s.handle("data:importAll", (e, t) => {
+ipcMain.handle("data:importAll", (_event, importData) => {
   try {
-    return t.data && P(t.data), t.settings && h(t.settings), { success: !0 };
-  } catch (o) {
-    return console.error("Import failed:", o), { success: !1, error: String(o) };
+    if (importData.data) {
+      saveData(importData.data);
+    }
+    if (importData.settings) {
+      saveSettings(importData.settings);
+    }
+    return { success: true };
+  } catch (error) {
+    console.error("Import failed:", error);
+    return { success: false, error: String(error) };
   }
 });
-a.whenReady().then(() => {
-  p(), a.on("activate", () => {
-    S.getAllWindows().length === 0 && p();
+app.whenReady().then(() => {
+  createWindow();
+  app.on("activate", () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
   });
 });
-a.on("window-all-closed", () => {
-  process.platform !== "darwin" && a.quit();
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") {
+    app.quit();
+  }
 });
