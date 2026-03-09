@@ -53,6 +53,20 @@ FocusFlow is a beautiful, privacy-focused, local Kanban board application design
     npm run build
     ```
 
+## Agent Instructions
+
+- Global agent guidance lives in `AGENTS.md`.
+- Reusable agent skills live in `.agents/skills/`.
+- Each skill uses this structure:
+
+```text
+.agents/skills/<skill-name>/
+  SKILL.md
+  scripts/      (optional)
+  references/   (optional)
+  assets/       (optional)
+```
+
 ## Development
 
 -   `src/components`: UI components (Sidebar, BoardView, TaskCard, etc.)
