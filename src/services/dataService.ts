@@ -3,65 +3,10 @@
 
 import '../types/electron.d.ts';
 
-export interface Board {
-    id: number;
-    title: string;
-    createdAt: Date | string;
-    order?: number;
-}
-
-export interface Label {
-    id: number;
-    name: string;
-    color: string;
-    order?: number;
-}
-
-export interface Column {
-    id: number;
-    boardId: number;
-    title: string;
-    order: number;
-}
-
-export interface Attachment {
-    id: string;
-    name: string;
-    type: string;
-    size: number;
-    uploadedAt: Date | string;
-    data: string; // Base64 encoded in file storage
-}
-
-export interface Task {
-    id: number;
-    boardId: number;
-    title: string;
-    description: string;
-    urgency: number;
-    importance: number;
-    columnId: number;
-    labelIds: number[];
-    checklist: { id: string; text: string; done: boolean }[];
-    comments: { id: string; text: string; createdAt: number }[];
-    attachments: Attachment[];
-    order: number;
-}
-
-export interface FocusFlowData {
-    boards: Board[];
-    columns: Column[];
-    labels: Label[];
-    tasks: Task[];
-    version: number;
-    lastModified: string;
-}
-
-export interface FocusFlowSettings {
-    windowBounds: { width: number; height: number; x?: number; y?: number };
-    lastOpenedBoardId: number | null;
-    theme: 'dark' | 'light';
-}
+import type {
+    Board, Label, Column, Attachment, Task, FocusFlowData, FocusFlowSettings
+} from '../domain/schema';
+import { validateFocusFlowData, validateFocusFlowSettings } from '../domain/validation';
 
 // Event system for reactive updates
 type DataChangeListener = () => void;
@@ -115,6 +60,15 @@ export const initializeData = async (): Promise<FocusFlowData> => {
         // Fallback to localStorage for web development
         const stored = localStorage.getItem('focusflow-data');
         dataCache = stored ? JSON.parse(stored) : getDefaultData();
+    }
+
+    if (dataCache) {
+        const validation = validateFocusFlowData(dataCache);
+        if (!validation.isValid) {
+            console.error('Data validation failed:', validation.error);
+            // Fallback to safe defaults to prevent app crash
+            dataCache = getDefaultData();
+        }
     }
 
     return dataCache || getDefaultData();
@@ -414,6 +368,11 @@ export const importAllData = async (importData: {
             return { success: false, error: 'No valid data found in import file' };
         }
 
+        const validation = validateFocusFlowData(dataToImport);
+        if (!validation.isValid) {
+            return { success: false, error: `Invalid import data: ${validation.error}` };
+        }
+
         const api = getElectronAPI();
         if (api) {
             // Convert dates to strings for JSON storage
@@ -454,6 +413,14 @@ export const getSettings = async (): Promise<FocusFlowSettings> => {
     } else {
         const stored = localStorage.getItem('focusflow-settings');
         settingsCache = stored ? JSON.parse(stored) : getDefaultSettings();
+    }
+
+    if (settingsCache) {
+        const validation = validateFocusFlowSettings(settingsCache);
+        if (!validation.isValid) {
+            console.error('Settings validation failed:', validation.error);
+            settingsCache = getDefaultSettings();
+        }
     }
 
     return settingsCache || getDefaultSettings();
