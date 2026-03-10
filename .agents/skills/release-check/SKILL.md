@@ -7,25 +7,18 @@ description: Run pre-commit or pre-PR quality checks and summarize readiness. Us
 
 ## Procedure
 
-1. Run `cmd /c npm run lint`.
-2. Run `cmd /c npm run build`.
-3. Record failures as blockers and non-failing concerns as warnings.
-4. Provide a minimal fix order for blockers.
-5. Return a readiness verdict.
-
-## Classification Rules
-
-- Blocker: failed command, type error, lint error, build failure.
-- Warning: non-blocking concerns, potential risks, missing optional checks.
+1. Read the `eslint.config.js` to understand the specific rules in place.
+2. Run `npm run lint` and `npm run type-check`.
+3. Read the output. If there are failures, immediately offer to fix them, or explain why they are irrelevant (e.g. they pre-date your change). Do not just state "Lint Failed".
+4. Run `npm run build` to ensure the project packages correctly. For Electron on Windows, `build` uses `electron-builder`. Be aware of `ERR_ELECTRON_BUILDER_CANNOT_EXECUTE` which often happens due to network blocks preventing github binary downloads.
+5. If there are Vitest unit tests in the project, run `npm test`.
 
 ## Output Template
 
-- Commands run:
-- Blockers:
-- Warnings:
-- Suggested fix order:
-- Readiness verdict: `READY` or `NOT READY`
+Provide a clear and concise summary to the user:
+- **Build Status**: `PASS/FAIL/SKIP`
+- **Lint Status**: `PASS/FAIL/SKIP`
+- **Type Check**: `PASS/FAIL/SKIP`
+- **Test Status**: `PASS/FAIL/SKIP`
 
-## References
-
-- See `references/checklist.md` for FocusFlow baseline checks.
+Identify the specific blockers and provide a short script (or offer an automated fix via agents) for resolving them.

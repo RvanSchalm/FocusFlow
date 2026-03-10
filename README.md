@@ -4,7 +4,7 @@ FocusFlow is a beautiful, privacy-focused, local Kanban board application design
 
 ## Features
 
--   **Local-First Architecture:** All data (boards, tasks, files) is stored locally in your browser (IndexedDB). No sign-up, no cloud, no tracking.
+-   **Desktop-First Architecture:** All data (boards, tasks, files) is stored locally using Electron JSON file storage via IPC. No sign-up, no cloud, no tracking. A localStorage fallback exists for browser development.
 -   **Rich Task Management:**
     -   Create multiple boards and columns.
     -   Drag-and-drop tasks and checklist items.
@@ -26,11 +26,11 @@ FocusFlow is a beautiful, privacy-focused, local Kanban board application design
 
 -   **Frontend:** React 19, TypeScript, Vite
 -   **Styling:** TailwindCSS 4
--   **State/Storage:** Dexie.js (IndexedDB wrapper)
+-   **State/Storage:** Zustand (State), Electron JSON IPC (Storage)
 -   **Editor:** Tiptap (Headless wrapper for ProseMirror)
 -   **Drag & Drop:** @hello-pangea/dnd
 
-## getting Started
+## Getting Started
 
 1.  **Clone the repository:**
     ```bash
@@ -70,7 +70,9 @@ FocusFlow is a beautiful, privacy-focused, local Kanban board application design
 ## Development
 
 -   `src/components`: UI components (Sidebar, BoardView, TaskCard, etc.)
--   `src/db.ts`: Database schema definition.
+-   `src/domain`: Domain logic, schema, and validation rules.
+-   `src/store`: Zustand state management.
+-   `src/services/dataService.ts`: Data access layer and IPC bridge.
 
 ## License
 

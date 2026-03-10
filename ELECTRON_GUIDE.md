@@ -161,6 +161,8 @@ focus-flow/
 └── focusflow-settings.json  # Window size, preferences
 ```
 
+*Note: If developing in a standard web browser (without Electron), FocusFlow will fall back to using browser `localStorage`.*
+
 ### Data Format
 
 Data is stored as human-readable JSON. Example structure:
@@ -224,9 +226,10 @@ To backup your data:
 3. Confirm the import (this will replace all existing data)
 4. The app will reload with the imported data
 
-### Legacy Format Support
+### Supported Formats
 
-Imports from the old IndexedDB-based version are automatically converted.
+- Standard exports are comprehensive JSON files containing the data state and Base64 encoded attachments.
+- Legacy imports from the old IndexedDB-based version are automatically converted by `dataService.ts` upon import.
 
 ---
 
