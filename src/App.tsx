@@ -1,9 +1,29 @@
 import { HashRouter, Link, Route, Routes } from "react-router-dom";
+import { useEffect } from "react";
 import { BoardView } from "./components/BoardView";
 import { ConfirmProvider } from "./components/ConfirmDialog";
 import { Sidebar } from "./components/Sidebar";
+import { useStore } from "./store/useStore";
 
 function App() {
+  const initialize = useStore((state) => state.initialize);
+  const isLoading = useStore((state) => state.isLoading);
+
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
+
+  if (isLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center h-screen bg-zinc-950">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-zinc-400 text-sm">Loading FocusFlow...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <ConfirmProvider>
       <HashRouter>

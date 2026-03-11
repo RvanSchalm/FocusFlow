@@ -1,4 +1,4 @@
-import type { Label, Task } from "../services/dataService";
+import type { Label, Task } from "../domain/schema";
 
 interface MatrixViewProps {
     tasks: Task[];

@@ -2,23 +2,22 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import {
-    getBoards,
-    getLabels,
-    addBoard,
-    deleteBoard as deleteBoardFromDb,
     exportAllData,
-    importAllData,
-    bulkUpdateBoards,
-    bulkUpdateLabels
+    importAllData
 } from "../services/dataService";
-import { useData } from "../services/useData";
+import { useStore } from "../store/useStore";
 import { useConfirm } from "./ConfirmDialog";
 import { LabelManager } from "./LabelManager";
 import { Modal } from "./Modal";
 
 export function Sidebar() {
-    const boards = useData(() => getBoards(), []);
-    const labels = useData(() => getLabels(), []);
+    const boards = useStore(state => state.boards);
+    const labels = useStore(state => state.labels);
+    const addBoard = useStore(state => state.addBoard);
+    const deleteBoardFromDb = useStore(state => state.deleteBoard);
+    const bulkUpdateBoards = useStore(state => state.bulkUpdateBoards);
+    const bulkUpdateLabels = useStore(state => state.bulkUpdateLabels);
+    const initialize = useStore(state => state.initialize);
     const navigate = useNavigate();
     const location = useLocation();
     const confirm = useConfirm();
@@ -106,7 +105,7 @@ export function Sidebar() {
 
                 if (result.success) {
                     alert("Import successful!");
-                    window.location.reload();
+                    await initialize(); // Reload Zustand state
                 } else {
                     throw new Error(result.error || 'Import failed');
                 }

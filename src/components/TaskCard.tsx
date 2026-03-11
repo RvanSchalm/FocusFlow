@@ -1,7 +1,6 @@
 import { Draggable } from "@hello-pangea/dnd";
-import type { Task } from "../services/dataService";
-import { getLabels, deleteTask } from "../services/dataService";
-import { useData } from "../services/useData";
+import type { Task } from "../domain/schema";
+import { useStore } from "../store/useStore";
 
 interface TaskCardProps {
     task: Task;
@@ -10,7 +9,8 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task, index, onClick }: TaskCardProps) {
-    const labels = useData(() => getLabels(), []);
+    const labels = useStore(state => state.labels);
+    const deleteTask = useStore(state => state.deleteTask);
 
     const handleDelete = async (e: React.MouseEvent) => {
         e.stopPropagation();

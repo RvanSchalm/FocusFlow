@@ -1,17 +1,7 @@
 import { DragDropContext, Droppable, type DropResult } from "@hello-pangea/dnd";
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
-import {
-    getBoard,
-    getColumns,
-    getTasks,
-    getLabels,
-    updateBoard,
-    addColumn as addColumnToDb,
-    bulkUpdateColumns,
-    bulkUpdateTasks
-} from "../services/dataService";
-import { useData } from "../services/useData";
+import { useStore } from "../store/useStore";
 import { Column } from "./Column";
 import { MatrixView } from "./MatrixView";
 import { Modal } from "./Modal";
@@ -21,22 +11,21 @@ export function BoardView() {
     const { boardId } = useParams();
     const id = parseInt(boardId || "0", 10);
 
-    const board = useData(() => getBoard(id), [id]);
-    const columns = useData(
-        async () => {
-            const cols = await getColumns(id);
-            return cols.sort((a, b) => a.order - b.order);
-        },
-        [id]
-    );
-    const tasks = useData(
-        async () => {
-            const t = await getTasks(id);
-            return t; // sorted per-column at render time, not globally
-        },
-        [id]
-    );
-    const labels = useData(() => getLabels(), []);
+    const board = useStore(state => state.boards.find(b => b.id === id));
+
+    // Grab all entities and filter locally to avoid re-render loops with inline filter()
+    const allColumns = useStore(state => state.columns);
+    const columns = allColumns.filter(c => c.boardId === id).sort((a, b) => a.order - b.order);
+
+    const allTasks = useStore(state => state.tasks);
+    const tasks = allTasks.filter(t => t.boardId === id);
+
+    const labels = useStore(state => state.labels);
+
+    const updateBoard = useStore(state => state.updateBoard);
+    const addColumnToDb = useStore(state => state.addColumn);
+    const bulkUpdateColumns = useStore(state => state.bulkUpdateColumns);
+    const bulkUpdateTasks = useStore(state => state.bulkUpdateTasks);
 
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [title, setTitle] = useState("");
@@ -61,6 +50,7 @@ export function BoardView() {
     // Initialize title when board loads
     useEffect(() => {
         if (board && !isEditingTitle) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setTitle(board.title);
         }
     }, [board, isEditingTitle]);
@@ -68,6 +58,7 @@ export function BoardView() {
     // Initialize selected columns when columns load (select all by default)
     useEffect(() => {
         if (columns && columns.length > 0 && !columnsInitialized.current) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setSelectedColumnIds(columns.map(c => c.id));
             columnsInitialized.current = true;
         }
@@ -76,6 +67,7 @@ export function BoardView() {
     // Reset initialization flag when board changes
     useEffect(() => {
         columnsInitialized.current = false;
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSelectedColumnIds([]);
     }, [id]);
 
@@ -188,7 +180,7 @@ export function BoardView() {
     };
 
     // Show loading state while data is being fetched
-    if (board === undefined || columns === undefined || tasks === undefined) {
+    if (!board || columns === undefined || tasks === undefined) {
         return (
             <div className="flex-1 flex items-center justify-center h-screen bg-zinc-950">
                 <div className="flex flex-col items-center gap-4">
@@ -300,8 +292,8 @@ export function BoardView() {
                                                 className="w-full flex items-center gap-3 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 transition-colors"
                                             >
                                                 <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${selectedColumnIds.includes(column.id)
-                                                        ? "bg-indigo-500 border-indigo-500"
-                                                        : "border-zinc-600 bg-transparent"
+                                                    ? "bg-indigo-500 border-indigo-500"
+                                                    : "border-zinc-600 bg-transparent"
                                                     }`}>
                                                     {selectedColumnIds.includes(column.id) && (
                                                         <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">

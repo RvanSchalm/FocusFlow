@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { getTask, getLabels, updateTask } from "../services/dataService";
-import type { Task } from "../services/dataService";
-import { useData } from "../services/useData";
+import type { Task } from "../domain/schema";
+import { useStore } from "../store/useStore";
 import { useConfirm } from "./ConfirmDialog";
 import { RichTextEditor } from "./RichTextEditor";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
@@ -13,8 +12,10 @@ interface TaskModalProps {
 }
 
 export function TaskModal({ taskId }: TaskModalProps) {
-    const task = useData(() => getTask(taskId), [taskId]);
-    const labels = useData(() => getLabels(), []);
+    const task = useStore(state => state.tasks.find(t => t.id === taskId));
+    const labels = useStore(state => state.labels);
+    const updateTask = useStore(state => state.updateTask);
+    
     const confirm = useConfirm();
 
     const [title, setTitle] = useState("");
@@ -28,6 +29,7 @@ export function TaskModal({ taskId }: TaskModalProps) {
 
     useEffect(() => {
         if (task) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setTitle(task.title);
             setDescription(task.description);
             setUrgency(task.urgency);
@@ -59,7 +61,7 @@ export function TaskModal({ taskId }: TaskModalProps) {
 
     const handleSave = async (updates: Partial<Task>) => {
         try {
-            await updateTask(taskId, updates);
+            updateTask(taskId, updates);
         } catch (error) {
             console.error("Failed to save task:", error);
         }

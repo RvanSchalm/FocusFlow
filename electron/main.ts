@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { join, dirname } from 'path';
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { existsSync, mkdirSync, promises as fsPromises } from 'fs';
 import { fileURLToPath } from 'url';
 
 // ES module equivalent of __dirname
@@ -44,12 +44,12 @@ const getDefaultSettings = () => ({
 });
 
 // Load data from file
-const loadData = (): object => {
+const loadData = async (): Promise<object> => {
     try {
         ensureDataDir();
         const dataPath = getDataPath();
         if (existsSync(dataPath)) {
-            const content = readFileSync(dataPath, 'utf-8');
+            const content = await fsPromises.readFile(dataPath, 'utf-8');
             return JSON.parse(content);
         }
         return getDefaultData();
@@ -60,7 +60,7 @@ const loadData = (): object => {
 };
 
 // Save data to file
-const saveData = (data: object): boolean => {
+const saveData = async (data: object): Promise<boolean> => {
     try {
         ensureDataDir();
         const dataPath = getDataPath();
@@ -68,7 +68,7 @@ const saveData = (data: object): boolean => {
             ...data,
             lastModified: new Date().toISOString()
         };
-        writeFileSync(dataPath, JSON.stringify(dataWithMeta, null, 2), 'utf-8');
+        await fsPromises.writeFile(dataPath, JSON.stringify(dataWithMeta, null, 2), 'utf-8');
         return true;
     } catch (error) {
         console.error('Failed to save data:', error);
@@ -77,12 +77,12 @@ const saveData = (data: object): boolean => {
 };
 
 // Load settings
-const loadSettings = (): object => {
+const loadSettings = async (): Promise<object> => {
     try {
         ensureDataDir();
         const settingsPath = getSettingsPath();
         if (existsSync(settingsPath)) {
-            const content = readFileSync(settingsPath, 'utf-8');
+            const content = await fsPromises.readFile(settingsPath, 'utf-8');
             return JSON.parse(content);
         }
         return getDefaultSettings();
@@ -93,11 +93,11 @@ const loadSettings = (): object => {
 };
 
 // Save settings
-const saveSettings = (settings: object): boolean => {
+const saveSettings = async (settings: object): Promise<boolean> => {
     try {
         ensureDataDir();
         const settingsPath = getSettingsPath();
-        writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf-8');
+        await fsPromises.writeFile(settingsPath, JSON.stringify(settings, null, 2), 'utf-8');
         return true;
     } catch (error) {
         console.error('Failed to save settings:', error);
@@ -107,8 +107,8 @@ const saveSettings = (settings: object): boolean => {
 
 let mainWindow: BrowserWindow | null = null;
 
-const createWindow = () => {
-    const settings = loadSettings() as { windowBounds?: { width: number; height: number; x?: number; y?: number } };
+const createWindow = async () => {
+    const settings = (await loadSettings()) as { windowBounds?: { width: number; height: number; x?: number; y?: number } };
     const bounds = settings.windowBounds || { width: 1200, height: 800 };
 
     mainWindow = new BrowserWindow({
@@ -134,11 +134,11 @@ const createWindow = () => {
     });
 
     // Save window bounds on close
-    mainWindow.on('close', () => {
+    mainWindow.on('close', async () => {
         if (mainWindow) {
             const bounds = mainWindow.getBounds();
-            const currentSettings = loadSettings() as object;
-            saveSettings({ ...currentSettings, windowBounds: bounds });
+            const currentSettings = await loadSettings() as object;
+            await saveSettings({ ...currentSettings, windowBounds: bounds });
         }
     });
 
@@ -160,9 +160,9 @@ ipcMain.handle('app:getDataPath', () => getDataPath());
 ipcMain.handle('app:getSettingsPath', () => getSettingsPath());
 
 // Export all data (for backup)
-ipcMain.handle('data:exportAll', () => {
-    const data = loadData();
-    const settings = loadSettings();
+ipcMain.handle('data:exportAll', async () => {
+    const data = await loadData();
+    const settings = await loadSettings();
     return {
         data,
         settings,
@@ -172,13 +172,13 @@ ipcMain.handle('data:exportAll', () => {
 });
 
 // Import all data (from backup)
-ipcMain.handle('data:importAll', (_event, importData: { data?: object; settings?: object }) => {
+ipcMain.handle('data:importAll', async (_event, importData: { data?: object; settings?: object }) => {
     try {
         if (importData.data) {
-            saveData(importData.data);
+            await saveData(importData.data);
         }
         if (importData.settings) {
-            saveSettings(importData.settings);
+            await saveSettings(importData.settings);
         }
         return { success: true };
     } catch (error) {

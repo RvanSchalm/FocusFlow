@@ -1,7 +1,7 @@
 import { Draggable, Droppable } from "@hello-pangea/dnd";
 import { useState } from "react";
-import { updateColumn, deleteColumn as deleteColumnFromDb, addTask as addTaskToDb } from "../services/dataService";
-import type { Column as ColumnType, Task } from "../services/dataService";
+import { useStore } from "../store/useStore";
+import type { Column as ColumnType, Task } from "../domain/schema";
 import { useConfirm } from "./ConfirmDialog";
 import { TaskCard } from "./TaskCard";
 
@@ -16,6 +16,10 @@ export function Column({ column, tasks, index, onTaskClick }: ColumnProps) {
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [title, setTitle] = useState(column.title);
     const confirm = useConfirm();
+
+    const updateColumn = useStore(state => state.updateColumn);
+    const deleteColumnFromDb = useStore(state => state.deleteColumn);
+    const addTaskToDb = useStore(state => state.addTask);
 
     const handleTitleSave = async () => {
         try {

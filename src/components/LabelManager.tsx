@@ -1,12 +1,15 @@
 import { useState } from "react";
-import { getLabels, addLabel as addLabelToDb, updateLabel, deleteLabel as deleteLabelFromDb } from "../services/dataService";
-import type { Label } from "../services/dataService";
-import { useData } from "../services/useData";
+import type { Label } from "../domain/schema";
+import { useStore } from "../store/useStore";
 import { ColorPicker } from "./ColorPicker";
 import { useConfirm } from "./ConfirmDialog";
 
 export function LabelManager() {
-    const labels = useData(() => getLabels(), []);
+    const labels = useStore(state => state.labels);
+    const addLabelToDb = useStore(state => state.addLabel);
+    const updateLabel = useStore(state => state.updateLabel);
+    const deleteLabelFromDb = useStore(state => state.deleteLabel);
+
     const confirm = useConfirm();
 
     // State for form
@@ -126,8 +129,8 @@ export function LabelManager() {
                         <div
                             key={label.id}
                             className={`flex items-center justify-between p-3 rounded-lg border transition-all group ${editingId === label.id
-                                    ? "bg-indigo-500/10 border-indigo-500/50"
-                                    : "bg-zinc-800/30 border-zinc-800 hover:border-zinc-700"
+                                ? "bg-indigo-500/10 border-indigo-500/50"
+                                : "bg-zinc-800/30 border-zinc-800 hover:border-zinc-700"
                                 }`}
                         >
                             <div className="flex items-center gap-3">
