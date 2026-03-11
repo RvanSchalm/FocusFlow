@@ -10,9 +10,10 @@ interface ColumnProps {
     tasks: Task[];
     index: number;
     onTaskClick: (taskId: number) => void;
+    isDragDisabled?: boolean;
 }
 
-export function Column({ column, tasks, index, onTaskClick }: ColumnProps) {
+export function Column({ column, tasks, index, onTaskClick, isDragDisabled }: ColumnProps) {
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [title, setTitle] = useState(column.title);
     const confirm = useConfirm();
@@ -72,7 +73,7 @@ export function Column({ column, tasks, index, onTaskClick }: ColumnProps) {
     };
 
     return (
-        <Draggable draggableId={`col-${column.id}`} index={index}>
+        <Draggable draggableId={`col-${column.id}`} index={index} isDragDisabled={isDragDisabled}>
             {(provided) => (
                 <div
                     ref={provided.innerRef}
@@ -114,7 +115,7 @@ export function Column({ column, tasks, index, onTaskClick }: ColumnProps) {
                         </button>
                     </div>
 
-                    <Droppable droppableId={`col-${column.id}`} type="task">
+                    <Droppable droppableId={`col-${column.id}`} type="task" isDropDisabled={isDragDisabled}>
                         {(provided, snapshot) => (
                             <div
                                 ref={provided.innerRef}
@@ -123,7 +124,7 @@ export function Column({ column, tasks, index, onTaskClick }: ColumnProps) {
                                     }`}
                             >
                                 {tasks.map((task, index) => (
-                                    <TaskCard key={task.id} task={task} index={index} onClick={() => onTaskClick(task.id)} />
+                                    <TaskCard key={task.id} task={task} index={index} onClick={() => onTaskClick(task.id)} isDragDisabled={isDragDisabled} />
                                 ))}
                                 {provided.placeholder}
                             </div>

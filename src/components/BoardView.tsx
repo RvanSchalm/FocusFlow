@@ -20,7 +20,7 @@ export function BoardView() {
     const columns = allColumns.filter(c => c.boardId === id).sort((a, b) => a.order - b.order);
 
     const allTasks = useStore(state => state.tasks);
-    const tasks = allTasks.filter(t => t.boardId === id);
+    const rawTasks = allTasks.filter(t => t.boardId === id);
 
     const labels = useStore(state => state.labels);
 
@@ -30,9 +30,20 @@ export function BoardView() {
     const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
     const [viewMode, setViewMode] = useState<"kanban" | "matrix">("kanban");
     const [selectedColumnIds, setSelectedColumnIds] = useState<number[]>([]);
+    const [searchQuery, setSearchQuery] = useState("");
     const columnsInitialized = useRef(false);
 
-    const { onDragEnd } = useBoardDnD(columns, tasks);
+    // Apply search filter locally
+    const tasks = rawTasks.filter(t => {
+        if (!searchQuery.trim()) return true;
+        const q = searchQuery.toLowerCase();
+        return (
+            t.title.toLowerCase().includes(q) ||
+            (t.description || "").toLowerCase().includes(q)
+        );
+    });
+
+    const { onDragEnd } = useBoardDnD(columns, rawTasks); // Pass rawTasks to DnD so drag reordering uses actual db orders 
 
     // Initialize selected columns when columns load (select all by default)
     useEffect(() => {
@@ -108,6 +119,8 @@ export function BoardView() {
                 viewMode={viewMode}
                 setViewMode={setViewMode}
                 onUpdateTitle={handleUpdateTitle}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
             />
 
             {/* Board Content */}
@@ -128,6 +141,7 @@ export function BoardView() {
                                             tasks={(tasks?.filter((t) => t.columnId === column.id) || []).sort((a, b) => a.order - b.order)}
                                             index={index}
                                             onTaskClick={setSelectedTaskId}
+                                            isDragDisabled={!!searchQuery.trim()}
                                         />
                                     ))}
                                     {provided.placeholder}

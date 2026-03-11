@@ -6,9 +6,10 @@ interface TaskCardProps {
     task: Task;
     index: number;
     onClick: () => void;
+    isDragDisabled?: boolean;
 }
 
-export function TaskCard({ task, index, onClick }: TaskCardProps) {
+export function TaskCard({ task, index, onClick, isDragDisabled }: TaskCardProps) {
     const labels = useStore(state => state.labels);
     const deleteTask = useStore(state => state.deleteTask);
 
@@ -28,7 +29,7 @@ export function TaskCard({ task, index, onClick }: TaskCardProps) {
     const taskLabels = labels?.filter((l) => (task.labelIds || []).includes(l.id!)) || [];
 
     return (
-        <Draggable draggableId={`task-${task.id}`} index={index}>
+        <Draggable draggableId={`task-${task.id}`} index={index} isDragDisabled={isDragDisabled}>
             {(provided, snapshot) => (
                 <div
                     ref={provided.innerRef}

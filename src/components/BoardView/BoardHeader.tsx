@@ -9,6 +9,8 @@ interface BoardHeaderProps {
     viewMode: "kanban" | "matrix";
     setViewMode: (mode: "kanban" | "matrix") => void;
     onUpdateTitle: (newTitle: string) => Promise<void>;
+    searchQuery: string;
+    setSearchQuery: (query: string) => void;
 }
 
 export function BoardHeader({
@@ -19,6 +21,8 @@ export function BoardHeader({
     viewMode,
     setViewMode,
     onUpdateTitle,
+    searchQuery,
+    setSearchQuery,
 }: BoardHeaderProps) {
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [title, setTitle] = useState(board.title);
@@ -80,8 +84,35 @@ export function BoardHeader({
                 )}
             </div>
 
-            {/* Column Filter - Center (only visible in Matrix view) */}
-            <div className="flex-1 flex justify-center">
+            {/* Center Area: Search & Filters */}
+            <div className="flex-1 flex justify-center items-center gap-4">
+                {/* Search Input */}
+                <div className="relative w-64 max-w-full">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg className="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                    <input
+                        type="text"
+                        placeholder="Search tasks..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full bg-zinc-800/50 border border-zinc-700/50 text-zinc-200 text-sm rounded-lg focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 block pl-10 p-2 outline-none transition-colors placeholder-zinc-500"
+                    />
+                    {searchQuery && (
+                        <button
+                            onClick={() => setSearchQuery("")}
+                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-zinc-500 hover:text-zinc-300"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    )}
+                </div>
+
+                {/* Column Filter - Center (only visible in Matrix view) */}
                 {viewMode === "matrix" && (
                     <div className="relative" ref={columnFilterRef}>
                         <button
