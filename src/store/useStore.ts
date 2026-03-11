@@ -9,9 +9,11 @@ export interface AppState {
     labels: Label[];
     settings: FocusFlowSettings;
     isLoading: boolean;
+    isSaving: boolean;
     error: string | null;
 
     initialize: () => Promise<void>;
+    setIsSaving: (isSaving: boolean) => void;
 
     // Boards
     addBoard: (board: Omit<Board, 'id'>) => Promise<number>;
@@ -57,7 +59,10 @@ export const useStore = create<AppState>()((set) => ({
     labels: [],
     settings: { windowBounds: { width: 1200, height: 800 }, lastOpenedBoardId: null, theme: 'dark' },
     isLoading: true,
+    isSaving: false,
     error: null,
+
+    setIsSaving: (isSaving) => set({ isSaving }),
 
     initialize: async () => {
         try {
@@ -212,11 +217,18 @@ useStore.subscribe((state, prevState) => {
             labels: state.labels,
             version: 1,
             lastModified: new Date().toISOString()
-        });
+        },
+            () => useStore.getState().setIsSaving(true),
+            () => useStore.getState().setIsSaving(false)
+        );
     }
 
     // Check if settings changed
     if (state.settings !== prevState.settings) {
-        saveSettingsDebounced(state.settings);
+        saveSettingsDebounced(
+            state.settings,
+            () => useStore.getState().setIsSaving(true),
+            () => useStore.getState().setIsSaving(false)
+        );
     }
 });
