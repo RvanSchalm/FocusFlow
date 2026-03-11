@@ -1,4 +1,4 @@
-import { DragDropContext, Droppable, type DropResult } from "@hello-pangea/dnd";
+import { DragDropContext, Droppable } from "@hello-pangea/dnd";
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { useStore } from "../store/useStore";
@@ -6,6 +6,8 @@ import { Column } from "./Column";
 import { MatrixView } from "./MatrixView";
 import { Modal } from "./Modal";
 import { TaskModal } from "./TaskModal";
+import { useBoardDnD } from "./BoardView/useBoardDnD";
+import { BoardHeader } from "./BoardView/BoardHeader";
 
 export function BoardView() {
     const { boardId } = useParams();
@@ -24,36 +26,13 @@ export function BoardView() {
 
     const updateBoard = useStore(state => state.updateBoard);
     const addColumnToDb = useStore(state => state.addColumn);
-    const bulkUpdateColumns = useStore(state => state.bulkUpdateColumns);
-    const bulkUpdateTasks = useStore(state => state.bulkUpdateTasks);
 
-    const [isEditingTitle, setIsEditingTitle] = useState(false);
-    const [title, setTitle] = useState("");
     const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
     const [viewMode, setViewMode] = useState<"kanban" | "matrix">("kanban");
     const [selectedColumnIds, setSelectedColumnIds] = useState<number[]>([]);
-    const [isColumnFilterOpen, setIsColumnFilterOpen] = useState(false);
     const columnsInitialized = useRef(false);
-    const columnFilterRef = useRef<HTMLDivElement>(null);
 
-    // Close column filter dropdown when clicking outside
-    useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
-            if (columnFilterRef.current && !columnFilterRef.current.contains(event.target as Node)) {
-                setIsColumnFilterOpen(false);
-            }
-        }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
-
-    // Initialize title when board loads
-    useEffect(() => {
-        if (board && !isEditingTitle) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            setTitle(board.title);
-        }
-    }, [board, isEditingTitle]);
+    const { onDragEnd } = useBoardDnD(id);
 
     // Initialize selected columns when columns load (select all by default)
     useEffect(() => {
@@ -71,17 +50,8 @@ export function BoardView() {
         setSelectedColumnIds([]);
     }, [id]);
 
-    const handleTitleSave = async () => {
-        try {
-            const newTitle = title.trim() || "New Board";
-            if (newTitle !== board?.title) {
-                await updateBoard(id, { title: newTitle });
-            }
-            setTitle(newTitle);
-        } catch (error) {
-            console.error("Failed to save board title:", error);
-        }
-        setIsEditingTitle(false);
+    const handleUpdateTitle = async (newTitle: string) => {
+        await updateBoard(id, { title: newTitle });
     };
 
     const addColumn = async () => {
@@ -94,88 +64,6 @@ export function BoardView() {
             });
         } catch (error) {
             console.error("Failed to add column:", error);
-        }
-    };
-
-    const onDragEnd = async (result: DropResult) => {
-        const { destination, source, draggableId, type } = result;
-
-        if (!destination) return;
-
-        if (
-            destination.droppableId === source.droppableId &&
-            destination.index === source.index
-        ) {
-            return;
-        }
-
-        try {
-            // Column Reordering
-            if (type === "column") {
-                const newColumns = Array.from(columns || []);
-                const [removed] = newColumns.splice(source.index, 1);
-                newColumns.splice(destination.index, 0, removed);
-
-                // Update order in DB atomically
-                await bulkUpdateColumns(
-                    newColumns.map((col, index) => ({
-                        id: col.id,
-                        changes: { order: index }
-                    }))
-                );
-                return;
-            }
-
-            // Task Reordering
-            const taskId = parseInt(draggableId.replace("task-", ""), 10);
-            const sourceColId = parseInt(source.droppableId.replace("col-", ""), 10);
-            const destColId = parseInt(destination.droppableId.replace("col-", ""), 10);
-
-            const sourceTasks = (tasks?.filter((t) => t.columnId === sourceColId) || []).sort((a, b) => a.order - b.order);
-            const destTasks =
-                sourceColId === destColId
-                    ? sourceTasks
-                    : (tasks?.filter((t) => t.columnId === destColId) || []).sort((a, b) => a.order - b.order);
-
-            if (sourceColId === destColId) {
-                // Reordering within same column
-                const newTasks = Array.from(sourceTasks);
-                const [removed] = newTasks.splice(source.index, 1);
-                newTasks.splice(destination.index, 0, removed);
-
-                await bulkUpdateTasks(
-                    newTasks.map((t, index) => ({
-                        id: t.id,
-                        changes: { order: index }
-                    }))
-                );
-            } else {
-                // Moving to different column
-                const newSourceTasks = Array.from(sourceTasks);
-                newSourceTasks.splice(source.index, 1);
-
-                const newDestTasks = Array.from(destTasks);
-                const taskToMove = tasks?.find((t) => t.id === taskId);
-                if (taskToMove) {
-                    newDestTasks.splice(destination.index, 0, { ...taskToMove, columnId: destColId });
-                }
-
-                // Update source column orders
-                const sourceUpdates = newSourceTasks.map((t, index) => ({
-                    id: t.id,
-                    changes: { order: index }
-                }));
-
-                // Update dest column orders and move task
-                const destUpdates = newDestTasks.map((t, index) => ({
-                    id: t.id,
-                    changes: { columnId: destColId, order: index }
-                }));
-
-                await bulkUpdateTasks([...sourceUpdates, ...destUpdates]);
-            }
-        } catch (error) {
-            console.error("Failed to reorder:", error);
         }
     };
 
@@ -212,132 +100,15 @@ export function BoardView() {
             </div>
 
             {/* Header */}
-            <div className="h-16 border-b border-zinc-800/50 bg-zinc-900/80 backdrop-blur-md flex items-center justify-between px-6 flex-shrink-0 z-20">
-                <div className="flex items-center flex-1">
-                    {isEditingTitle ? (
-                        <input
-                            type="text"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            onBlur={handleTitleSave}
-                            onKeyDown={(e) => e.key === "Enter" && handleTitleSave()}
-                            className="text-2xl font-bold text-zinc-100 bg-transparent border-b-2 border-indigo-500 outline-none placeholder-zinc-600"
-                            autoFocus
-                        />
-                    ) : (
-                        <h2
-                            onClick={() => {
-                                setTitle(board.title);
-                                setIsEditingTitle(true);
-                            }}
-                            className="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent cursor-pointer hover:opacity-80 px-2 rounded transition-all"
-                        >
-                            {board.title}
-                        </h2>
-                    )}
-                </div>
-
-                {/* Column Filter - Center (only visible in Matrix view) */}
-                <div className="flex-1 flex justify-center">
-                    {viewMode === "matrix" && (
-                        <div className="relative" ref={columnFilterRef}>
-                            <button
-                                onClick={() => setIsColumnFilterOpen(!isColumnFilterOpen)}
-                                className="flex items-center gap-2 px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm font-medium text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100 transition-colors"
-                            >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                                </svg>
-                                Columns
-                                <span className="px-1.5 py-0.5 bg-zinc-900 rounded text-xs text-zinc-400">
-                                    {selectedColumnIds.length}/{columns.length}
-                                </span>
-                                <svg className={`w-4 h-4 transition-transform ${isColumnFilterOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </button>
-
-                            {isColumnFilterOpen && (
-                                <div className="absolute left-1/2 -translate-x-1/2 mt-2 w-56 bg-zinc-900 rounded-xl shadow-xl border border-zinc-800 z-50 py-2 overflow-hidden">
-                                    {/* Select/Deselect All */}
-                                    <div className="px-3 pb-2 mb-2 border-b border-zinc-800 flex gap-2">
-                                        <button
-                                            onClick={() => setSelectedColumnIds(columns.map(c => c.id))}
-                                            disabled={columns.length > 0 && selectedColumnIds.length === columns.length}
-                                            className="flex-1 px-2 py-1.5 text-xs font-medium rounded-lg bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            Select All
-                                        </button>
-                                        <button
-                                            onClick={() => setSelectedColumnIds([])}
-                                            disabled={selectedColumnIds.length === 0}
-                                            className="flex-1 px-2 py-1.5 text-xs font-medium rounded-lg bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            Deselect All
-                                        </button>
-                                    </div>
-
-                                    {/* Column List */}
-                                    <div className="max-h-60 overflow-y-auto">
-                                        {columns.map(column => (
-                                            <button
-                                                key={column.id}
-                                                onClick={() => {
-                                                    if (selectedColumnIds.includes(column.id)) {
-                                                        setSelectedColumnIds(selectedColumnIds.filter(id => id !== column.id));
-                                                    } else {
-                                                        setSelectedColumnIds([...selectedColumnIds, column.id]);
-                                                    }
-                                                }}
-                                                className="w-full flex items-center gap-3 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 transition-colors"
-                                            >
-                                                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${selectedColumnIds.includes(column.id)
-                                                    ? "bg-indigo-500 border-indigo-500"
-                                                    : "border-zinc-600 bg-transparent"
-                                                    }`}>
-                                                    {selectedColumnIds.includes(column.id) && (
-                                                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                                        </svg>
-                                                    )}
-                                                </div>
-                                                <span className="truncate">{column.title}</span>
-                                            </button>
-                                        ))}
-                                        {columns.length === 0 && (
-                                            <div className="px-3 py-2 text-sm text-zinc-500 italic">No columns</div>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-
-                {/* View Toggle - Right */}
-                <div className="flex-1 flex justify-end">
-                    <div className="flex bg-zinc-900 p-1 rounded-lg border border-zinc-800">
-                        <button
-                            onClick={() => setViewMode("kanban")}
-                            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === "kanban"
-                                ? "bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-sm"
-                                : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50"
-                                }`}
-                        >
-                            Kanban View
-                        </button>
-                        <button
-                            onClick={() => setViewMode("matrix")}
-                            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === "matrix"
-                                ? "bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-sm"
-                                : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50"
-                                }`}
-                        >
-                            Matrix View
-                        </button>
-                    </div>
-                </div>
-            </div>
+            <BoardHeader
+                board={board}
+                columns={columns}
+                selectedColumnIds={selectedColumnIds}
+                setSelectedColumnIds={setSelectedColumnIds}
+                viewMode={viewMode}
+                setViewMode={setViewMode}
+                onUpdateTitle={handleUpdateTitle}
+            />
 
             {/* Board Content */}
             {viewMode === "kanban" ? (
