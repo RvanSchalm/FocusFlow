@@ -1,16 +1,16 @@
-import { contextBridge as a, ipcRenderer as t } from "electron";
-const o = {
+import { contextBridge, ipcRenderer } from "electron";
+const electronAPI = {
   // Data operations
-  loadData: () => t.invoke("data:load"),
-  saveData: (e) => t.invoke("data:save", e),
+  loadData: () => ipcRenderer.invoke("data:load"),
+  saveData: (data) => ipcRenderer.invoke("data:save", data),
   // Settings operations
-  loadSettings: () => t.invoke("settings:load"),
-  saveSettings: (e) => t.invoke("settings:save", e),
+  loadSettings: () => ipcRenderer.invoke("settings:load"),
+  saveSettings: (settings) => ipcRenderer.invoke("settings:save", settings),
   // Paths
-  getDataPath: () => t.invoke("app:getDataPath"),
-  getSettingsPath: () => t.invoke("app:getSettingsPath"),
+  getDataPath: () => ipcRenderer.invoke("app:getDataPath"),
+  getSettingsPath: () => ipcRenderer.invoke("app:getSettingsPath"),
   // Import/Export
-  exportAll: () => t.invoke("data:exportAll"),
-  importAll: (e) => t.invoke("data:importAll", e)
+  exportAll: () => ipcRenderer.invoke("data:exportAll"),
+  importAll: (importData) => ipcRenderer.invoke("data:importAll", importData)
 };
-a.exposeInMainWorld("electronAPI", o);
+contextBridge.exposeInMainWorld("electronAPI", electronAPI);

@@ -2,15 +2,14 @@ import { useState } from "react";
 import type { Label } from "../domain/schema";
 import { useStore } from "../store/useStore";
 import { ColorPicker } from "./ColorPicker";
-import { useConfirm } from "./ConfirmDialog";
+import { toast } from "sonner";
 
 export function LabelManager() {
     const labels = useStore(state => state.labels);
     const addLabelToDb = useStore(state => state.addLabel);
     const updateLabel = useStore(state => state.updateLabel);
     const deleteLabelFromDb = useStore(state => state.deleteLabel);
-
-    const confirm = useConfirm();
+    const restoreLabel = useStore(state => state.restoreLabel);
 
     // State for form
     const [name, setName] = useState("");
@@ -47,21 +46,25 @@ export function LabelManager() {
     };
 
     const deleteLabel = async (id: number) => {
-        const confirmed = await confirm({
-            title: "Delete Label",
-            message: "Delete this label? It will be removed from all tasks.",
-            confirmText: "Delete",
-            variant: "danger",
-        });
-        if (confirmed) {
-            try {
-                await deleteLabelFromDb(id);
-                if (editingId === id) {
-                    cancelEditing();
-                }
-            } catch (error) {
-                console.error("Failed to delete label:", error);
+        const state = useStore.getState();
+        const labelToRestore = state.labels.find(l => l.id === id);
+        const tasksToRestore = state.tasks.filter(t => t.labelIds.includes(id));
+
+        if (!labelToRestore) return;
+
+        try {
+            await deleteLabelFromDb(id);
+            if (editingId === id) {
+                cancelEditing();
             }
+            toast("Label deleted", {
+                action: {
+                    label: "Undo",
+                    onClick: () => restoreLabel(labelToRestore, tasksToRestore)
+                }
+            });
+        } catch (error) {
+            console.error("Failed to delete label:", error);
         }
     };
 

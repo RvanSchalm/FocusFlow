@@ -4,6 +4,7 @@ import { BoardView } from "./components/BoardView";
 import { ConfirmProvider } from "./components/ConfirmDialog";
 import { Sidebar } from "./components/Sidebar";
 import { useStore } from "./store/useStore";
+import { Toaster } from "sonner";
 
 function App() {
   const initialize = useStore((state) => state.initialize);
@@ -29,7 +30,8 @@ function App() {
       <HashRouter>
         <div className="flex h-screen bg-zinc-950 text-zinc-100">
           <Sidebar />
-          <main className="flex-1 overflow-hidden">
+          <main className="flex-1 overflow-hidden relative">
+            <Toaster position="bottom-right" theme="dark" />
             <Routes>
               <Route path="/board/:boardId" element={<BoardView />} />
               <Route

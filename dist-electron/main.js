@@ -1,126 +1,168 @@
-import { ipcMain as s, app as n, BrowserWindow as S } from "electron";
-import { dirname as v, join as r } from "path";
-import { existsSync as c, promises as d, mkdirSync as _ } from "fs";
-import { fileURLToPath as I } from "url";
-const F = I(import.meta.url), w = v(F), u = () => {
-  const e = n.getPath("userData");
-  return r(e, "focusflow-data.json");
-}, h = () => {
-  const e = n.getPath("userData");
-  return r(e, "focusflow-settings.json");
-}, l = () => {
-  const e = n.getPath("userData");
-  c(e) || _(e, { recursive: !0 });
-}, f = () => ({
+import { ipcMain, app, BrowserWindow } from "electron";
+import { dirname, join } from "path";
+import { existsSync, promises, mkdirSync } from "fs";
+import { fileURLToPath } from "url";
+const __filename$1 = fileURLToPath(import.meta.url);
+const __dirname$1 = dirname(__filename$1);
+const getDataPath = () => {
+  const userDataPath = app.getPath("userData");
+  return join(userDataPath, "focusflow-data.json");
+};
+const getSettingsPath = () => {
+  const userDataPath = app.getPath("userData");
+  return join(userDataPath, "focusflow-settings.json");
+};
+const ensureDataDir = () => {
+  const userDataPath = app.getPath("userData");
+  if (!existsSync(userDataPath)) {
+    mkdirSync(userDataPath, { recursive: true });
+  }
+};
+const getDefaultData = () => ({
   boards: [],
   columns: [],
   tasks: [],
   labels: [],
   version: 1,
   lastModified: (/* @__PURE__ */ new Date()).toISOString()
-}), p = () => ({
+});
+const getDefaultSettings = () => ({
   windowBounds: { width: 1200, height: 800 },
   lastOpenedBoardId: null,
   theme: "dark"
-}), m = async () => {
+});
+const loadData = async () => {
   try {
-    l();
-    const e = u();
-    if (c(e)) {
-      const t = await d.readFile(e, "utf-8");
-      return JSON.parse(t);
+    ensureDataDir();
+    const dataPath = getDataPath();
+    if (existsSync(dataPath)) {
+      const content = await promises.readFile(dataPath, "utf-8");
+      return JSON.parse(content);
     }
-    return f();
-  } catch (e) {
-    return console.error("Failed to load data:", e), f();
-  }
-}, D = async (e) => {
-  try {
-    l();
-    const t = u(), o = {
-      ...e,
-      lastModified: (/* @__PURE__ */ new Date()).toISOString()
-    };
-    return await d.writeFile(t, JSON.stringify(o, null, 2), "utf-8"), !0;
-  } catch (t) {
-    return console.error("Failed to save data:", t), !1;
-  }
-}, i = async () => {
-  try {
-    l();
-    const e = h();
-    if (c(e)) {
-      const t = await d.readFile(e, "utf-8");
-      return JSON.parse(t);
-    }
-    return p();
-  } catch (e) {
-    return console.error("Failed to load settings:", e), p();
-  }
-}, g = async (e) => {
-  try {
-    l();
-    const t = h();
-    return await d.writeFile(t, JSON.stringify(e, null, 2), "utf-8"), !0;
-  } catch (t) {
-    return console.error("Failed to save settings:", t), !1;
+    return getDefaultData();
+  } catch (error) {
+    console.error("Failed to load data:", error);
+    return getDefaultData();
   }
 };
-let a = null;
-const y = async () => {
-  const t = (await i()).windowBounds || { width: 1200, height: 800 };
-  a = new S({
-    width: t.width,
-    height: t.height,
-    x: t.x,
-    y: t.y,
+const saveData = async (data) => {
+  try {
+    ensureDataDir();
+    const dataPath = getDataPath();
+    const dataWithMeta = {
+      ...data,
+      lastModified: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    await promises.writeFile(dataPath, JSON.stringify(dataWithMeta, null, 2), "utf-8");
+    return true;
+  } catch (error) {
+    console.error("Failed to save data:", error);
+    return false;
+  }
+};
+const loadSettings = async () => {
+  try {
+    ensureDataDir();
+    const settingsPath = getSettingsPath();
+    if (existsSync(settingsPath)) {
+      const content = await promises.readFile(settingsPath, "utf-8");
+      return JSON.parse(content);
+    }
+    return getDefaultSettings();
+  } catch (error) {
+    console.error("Failed to load settings:", error);
+    return getDefaultSettings();
+  }
+};
+const saveSettings = async (settings) => {
+  try {
+    ensureDataDir();
+    const settingsPath = getSettingsPath();
+    await promises.writeFile(settingsPath, JSON.stringify(settings, null, 2), "utf-8");
+    return true;
+  } catch (error) {
+    console.error("Failed to save settings:", error);
+    return false;
+  }
+};
+let mainWindow = null;
+const createWindow = async () => {
+  const settings = await loadSettings();
+  const bounds = settings.windowBounds || { width: 1200, height: 800 };
+  mainWindow = new BrowserWindow({
+    width: bounds.width,
+    height: bounds.height,
+    x: bounds.x,
+    y: bounds.y,
     minWidth: 800,
     minHeight: 600,
     webPreferences: {
-      preload: r(w, "preload.js"),
-      contextIsolation: !0,
-      nodeIntegration: !1
+      preload: join(__dirname$1, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false
     },
     backgroundColor: "#09090b",
     // zinc-950
     titleBarStyle: "hiddenInset",
-    show: !1
-  }), a.once("ready-to-show", () => {
-    a?.show();
-  }), a.on("close", async () => {
-    if (a) {
-      const o = a.getBounds(), P = await i();
-      await g({ ...P, windowBounds: o });
+    show: false
+  });
+  mainWindow.once("ready-to-show", () => {
+    mainWindow?.show();
+  });
+  mainWindow.on("close", async () => {
+    if (mainWindow) {
+      const bounds2 = mainWindow.getBounds();
+      const currentSettings = await loadSettings();
+      await saveSettings({ ...currentSettings, windowBounds: bounds2 });
     }
-  }), process.env.VITE_DEV_SERVER_URL ? (a.loadURL(process.env.VITE_DEV_SERVER_URL), a.webContents.openDevTools()) : a.loadFile(r(w, "../dist/index.html"));
+  });
+  if (process.env.VITE_DEV_SERVER_URL) {
+    mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
+    mainWindow.webContents.openDevTools();
+  } else {
+    mainWindow.loadFile(join(__dirname$1, "../dist/index.html"));
+  }
 };
-s.handle("data:load", () => m());
-s.handle("data:save", (e, t) => D(t));
-s.handle("settings:load", () => i());
-s.handle("settings:save", (e, t) => g(t));
-s.handle("app:getDataPath", () => u());
-s.handle("app:getSettingsPath", () => h());
-s.handle("data:exportAll", async () => {
-  const e = await m(), t = await i();
+ipcMain.handle("data:load", () => loadData());
+ipcMain.handle("data:save", (_event, data) => saveData(data));
+ipcMain.handle("settings:load", () => loadSettings());
+ipcMain.handle("settings:save", (_event, settings) => saveSettings(settings));
+ipcMain.handle("app:getDataPath", () => getDataPath());
+ipcMain.handle("app:getSettingsPath", () => getSettingsPath());
+ipcMain.handle("data:exportAll", async () => {
+  const data = await loadData();
+  const settings = await loadSettings();
   return {
-    data: e,
-    settings: t,
+    data,
+    settings,
     exportDate: (/* @__PURE__ */ new Date()).toISOString(),
-    appVersion: n.getVersion()
+    appVersion: app.getVersion()
   };
 });
-s.handle("data:importAll", async (e, t) => {
+ipcMain.handle("data:importAll", async (_event, importData) => {
   try {
-    return t.data && await D(t.data), t.settings && await g(t.settings), { success: !0 };
-  } catch (o) {
-    return console.error("Import failed:", o), { success: !1, error: String(o) };
+    if (importData.data) {
+      await saveData(importData.data);
+    }
+    if (importData.settings) {
+      await saveSettings(importData.settings);
+    }
+    return { success: true };
+  } catch (error) {
+    console.error("Import failed:", error);
+    return { success: false, error: String(error) };
   }
 });
-n.whenReady().then(() => {
-  y(), n.on("activate", () => {
-    S.getAllWindows().length === 0 && y();
+app.whenReady().then(() => {
+  createWindow();
+  app.on("activate", () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
   });
 });
-n.on("window-all-closed", () => {
-  process.platform !== "darwin" && n.quit();
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") {
+    app.quit();
+  }
 });

@@ -9,6 +9,7 @@ import { useStore } from "../store/useStore";
 import { useConfirm } from "./ConfirmDialog";
 import { LabelManager } from "./LabelManager";
 import { Modal } from "./Modal";
+import { toast } from "sonner";
 
 export function Sidebar() {
     const boards = useStore(state => state.boards);
@@ -18,9 +19,10 @@ export function Sidebar() {
     const bulkUpdateBoards = useStore(state => state.bulkUpdateBoards);
     const bulkUpdateLabels = useStore(state => state.bulkUpdateLabels);
     const initialize = useStore(state => state.initialize);
+    const restoreBoard = useStore(state => state.restoreBoard);
     const navigate = useNavigate();
     const location = useLocation();
-    const confirm = useConfirm();
+    const confirm = useConfirm(); // Still needed for import Data
     const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
 
     const sortedBoards = [...(boards || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -41,21 +43,30 @@ export function Sidebar() {
 
     const deleteBoard = async (e: React.MouseEvent, id: number) => {
         e.stopPropagation();
-        const confirmed = await confirm({
-            title: "Delete Board",
-            message: "Are you sure you want to delete this board and all its columns/tasks? This action cannot be undone.",
-            confirmText: "Delete",
-            variant: "danger",
-        });
-        if (confirmed) {
-            try {
-                await deleteBoardFromDb(id);
-                if (location.pathname === `/board/${id}`) {
-                    navigate("/");
-                }
-            } catch (error) {
-                console.error("Failed to delete board:", error);
+
+        const state = useStore.getState();
+        const boardToRestore = state.boards.find(b => b.id === id);
+        const columnsToRestore = state.columns.filter(c => c.boardId === id);
+        const tasksToRestore = state.tasks.filter(t => t.boardId === id);
+
+        if (!boardToRestore) return;
+
+        try {
+            await deleteBoardFromDb(id);
+            if (location.pathname === `/board/${id}`) {
+                navigate("/");
             }
+            toast("Board deleted", {
+                action: {
+                    label: "Undo",
+                    onClick: () => {
+                        restoreBoard(boardToRestore, columnsToRestore, tasksToRestore);
+                        // Don't auto-navigate back, it's safer
+                    }
+                }
+            });
+        } catch (error) {
+            console.error("Failed to delete board:", error);
         }
     };
 
