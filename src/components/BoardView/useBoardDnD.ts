@@ -1,9 +1,8 @@
 import type { DropResult } from "@hello-pangea/dnd";
 import { useStore } from "../../store/useStore";
+import type { Column, Task } from "../../domain/schema";
 
-export function useBoardDnD(boardId: number) {
-    const columns = useStore(state => state.columns.filter(c => c.boardId === boardId).sort((a, b) => a.order - b.order));
-    const tasks = useStore(state => state.tasks.filter(t => t.boardId === boardId));
+export function useBoardDnD(columns: Column[], tasks: Task[]) {
     const bulkUpdateColumns = useStore(state => state.bulkUpdateColumns);
     const bulkUpdateTasks = useStore(state => state.bulkUpdateTasks);
 

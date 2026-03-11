@@ -32,7 +32,7 @@ export function BoardView() {
     const [selectedColumnIds, setSelectedColumnIds] = useState<number[]>([]);
     const columnsInitialized = useRef(false);
 
-    const { onDragEnd } = useBoardDnD(id);
+    const { onDragEnd } = useBoardDnD(columns, tasks);
 
     // Initialize selected columns when columns load (select all by default)
     useEffect(() => {
