@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import type { Task } from "../../domain/schema";
+
 import { useStore } from "../../store/useStore";
 import { RichTextEditor } from "../RichTextEditor";
 
@@ -20,42 +20,35 @@ export function TaskDescription({ taskId }: TaskDescriptionProps) {
         }
     }, [task]);
 
-    if (!task) return null;
+    // Autosave effect with debounce
+    useEffect(() => {
+        if (!task || description === task.description) return;
 
-    const handleSave = async (updates: Partial<Task>) => {
-        try {
-            updateTask(taskId, updates);
-        } catch (error) {
-            console.error("Failed to save task:", error);
-        }
-    };
+        const timeoutId = setTimeout(() => {
+            try {
+                updateTask(taskId, { description });
+            } catch (error) {
+                console.error("Failed to autosave task description:", error);
+            }
+        }, 1000); // 1-second debounce
+
+        return () => clearTimeout(timeoutId);
+    }, [description, task, taskId, updateTask]);
+
+    if (!task) return null;
 
     return (
         <div>
             <label className="block text-xs font-bold text-zinc-500 uppercase mb-2 tracking-wider">Description</label>
-            <div className="space-y-3">
+            <div className="space-y-3 relative">
                 <RichTextEditor
                     value={description}
                     onChange={(val) => setDescription(val)}
                     placeholder="Add a more detailed description..."
                 />
-
                 {description !== task.description && (
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={() => handleSave({ description })}
-                            className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-medium rounded-lg transition-colors"
-                        >
-                            Save
-                        </button>
-                        <button
-                            onClick={() => {
-                                setDescription(task.description);
-                            }}
-                            className="px-4 py-2 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 text-sm font-medium rounded-lg transition-colors"
-                        >
-                            Cancel
-                        </button>
+                    <div className="absolute top-2 right-2 text-xs font-medium text-zinc-500 bg-zinc-900/80 px-2 py-1 rounded backdrop-blur-sm pointer-events-none">
+                        Saving...
                     </div>
                 )}
             </div>
