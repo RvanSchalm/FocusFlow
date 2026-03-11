@@ -9,18 +9,21 @@ import { useStore } from "../store/useStore";
 import { useConfirm } from "./ConfirmDialog";
 import { LabelManager } from "./LabelManager";
 import { Modal } from "./Modal";
+import { toast } from "sonner";
 
 export function Sidebar() {
     const boards = useStore(state => state.boards);
     const labels = useStore(state => state.labels);
+    const isSaving = useStore(state => state.isSaving);
     const addBoard = useStore(state => state.addBoard);
     const deleteBoardFromDb = useStore(state => state.deleteBoard);
     const bulkUpdateBoards = useStore(state => state.bulkUpdateBoards);
     const bulkUpdateLabels = useStore(state => state.bulkUpdateLabels);
     const initialize = useStore(state => state.initialize);
+    const restoreBoard = useStore(state => state.restoreBoard);
     const navigate = useNavigate();
     const location = useLocation();
-    const confirm = useConfirm();
+    const confirm = useConfirm(); // Still needed for import Data
     const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
 
     const sortedBoards = [...(boards || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -41,21 +44,30 @@ export function Sidebar() {
 
     const deleteBoard = async (e: React.MouseEvent, id: number) => {
         e.stopPropagation();
-        const confirmed = await confirm({
-            title: "Delete Board",
-            message: "Are you sure you want to delete this board and all its columns/tasks? This action cannot be undone.",
-            confirmText: "Delete",
-            variant: "danger",
-        });
-        if (confirmed) {
-            try {
-                await deleteBoardFromDb(id);
-                if (location.pathname === `/board/${id}`) {
-                    navigate("/");
-                }
-            } catch (error) {
-                console.error("Failed to delete board:", error);
+
+        const state = useStore.getState();
+        const boardToRestore = state.boards.find(b => b.id === id);
+        const columnsToRestore = state.columns.filter(c => c.boardId === id);
+        const tasksToRestore = state.tasks.filter(t => t.boardId === id);
+
+        if (!boardToRestore) return;
+
+        try {
+            await deleteBoardFromDb(id);
+            if (location.pathname === `/board/${id}`) {
+                navigate("/");
             }
+            toast("Board deleted", {
+                action: {
+                    label: "Undo",
+                    onClick: () => {
+                        restoreBoard(boardToRestore, columnsToRestore, tasksToRestore);
+                        // Don't auto-navigate back, it's safer
+                    }
+                }
+            });
+        } catch (error) {
+            console.error("Failed to delete board:", error);
         }
     };
 
@@ -79,26 +91,30 @@ export function Sidebar() {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        const confirmed = await confirm({
-            title: "Import Data",
-            message: "This will overwrite all existing data/boards. Are you sure you want to continue?",
-            confirmText: "Import",
-            variant: "warning",
-        });
-        if (!confirmed) {
-            e.target.value = ""; // Reset input
-            return;
-        }
-
         const reader = new FileReader();
         reader.onload = async (event) => {
             try {
                 const json = event.target?.result as string;
                 const data = JSON.parse(json);
 
-                // Validate imported data structure
                 if (typeof data !== 'object' || data === null) {
                     throw new Error('Invalid data format: expected an object');
+                }
+
+                const boardsCount = data.boards?.length || 0;
+                const tasksCount = data.tasks?.length || 0;
+                const labelsCount = data.labels?.length || 0;
+
+                const confirmed = await confirm({
+                    title: "Import Preview",
+                    message: `Found ${boardsCount} boards, ${tasksCount} tasks, and ${labelsCount} labels in this file. This will overwrite existing data. Continue?`,
+                    confirmText: "Import",
+                    variant: "warning",
+                });
+
+                if (!confirmed) {
+                    e.target.value = "";
+                    return;
                 }
 
                 const result = await importAllData(data);
@@ -141,10 +157,23 @@ export function Sidebar() {
 
     return (
         <div className="w-64 bg-zinc-900 border-r border-zinc-800 flex flex-col h-screen shadow-xl z-20">
-            <div className="p-6 border-b border-zinc-800/50">
+            <div className="p-6 border-b border-zinc-800/50 flex items-center justify-between">
                 <h1 className="text-2xl font-black bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent tracking-tight">
                     FocusFlow
                 </h1>
+                <div className="flex items-center gap-1.5 text-[10px] font-medium text-zinc-500">
+                    {isSaving ? (
+                        <>
+                            <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                            <span>Saving</span>
+                        </>
+                    ) : (
+                        <>
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            <span>Saved</span>
+                        </>
+                    )}
+                </div>
             </div>
 
             <div className="flex-1 overflow-y-auto py-6 px-3 space-y-8">

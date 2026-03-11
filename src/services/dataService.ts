@@ -53,12 +53,13 @@ export const initializeData = async (): Promise<FocusFlowData> => {
 let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 
 // Save data to storage with debouncing
-export const saveDataDebounced = (data: FocusFlowData): void => {
+export const saveDataDebounced = (data: FocusFlowData, onSaveStart?: () => void, onSaveEnd?: () => void): void => {
     if (saveTimeout) clearTimeout(saveTimeout);
 
     saveTimeout = setTimeout(async () => {
         try {
             saveTimeout = null;
+            if (onSaveStart) onSaveStart();
             const api = getElectronAPI();
             if (api) {
                 // Pre-process for IPC
@@ -69,6 +70,8 @@ export const saveDataDebounced = (data: FocusFlowData): void => {
             }
         } catch (error) {
             console.error('Failed to save data asynchronously:', error);
+        } finally {
+            if (onSaveEnd) onSaveEnd();
         }
     }, 500);
 };
@@ -97,12 +100,13 @@ export const getSettings = async (): Promise<FocusFlowSettings> => {
 
 let settingsSaveTimeout: ReturnType<typeof setTimeout> | null = null;
 
-export const saveSettingsDebounced = (settings: FocusFlowSettings): void => {
+export const saveSettingsDebounced = (settings: FocusFlowSettings, onSaveStart?: () => void, onSaveEnd?: () => void): void => {
     if (settingsSaveTimeout) clearTimeout(settingsSaveTimeout);
 
     settingsSaveTimeout = setTimeout(async () => {
         try {
             settingsSaveTimeout = null;
+            if (onSaveStart) onSaveStart();
             const api = getElectronAPI();
             if (api) {
                 await api.saveSettings(settings);
@@ -111,6 +115,8 @@ export const saveSettingsDebounced = (settings: FocusFlowSettings): void => {
             }
         } catch (error) {
             console.error('Failed to save settings:', error);
+        } finally {
+            if (onSaveEnd) onSaveEnd();
         }
     }, 500);
 };

@@ -1,21 +1,36 @@
 import { Draggable } from "@hello-pangea/dnd";
 import type { Task } from "../domain/schema";
 import { useStore } from "../store/useStore";
+import { toast } from "sonner";
 
 interface TaskCardProps {
     task: Task;
     index: number;
     onClick: () => void;
+    isDragDisabled?: boolean;
 }
 
-export function TaskCard({ task, index, onClick }: TaskCardProps) {
+export function TaskCard({ task, index, onClick, isDragDisabled }: TaskCardProps) {
     const labels = useStore(state => state.labels);
     const deleteTask = useStore(state => state.deleteTask);
+    const restoreTask = useStore(state => state.restoreTask);
 
     const handleDelete = async (e: React.MouseEvent) => {
         e.stopPropagation();
+
+        const state = useStore.getState();
+        const taskToRestore = state.tasks.find(t => t.id === task.id);
+
+        if (!taskToRestore) return;
+
         try {
             await deleteTask(task.id);
+            toast("Task deleted", {
+                action: {
+                    label: "Undo",
+                    onClick: () => restoreTask(taskToRestore)
+                }
+            });
         } catch (error) {
             console.error("Failed to delete task:", error);
         }
@@ -28,7 +43,7 @@ export function TaskCard({ task, index, onClick }: TaskCardProps) {
     const taskLabels = labels?.filter((l) => (task.labelIds || []).includes(l.id!)) || [];
 
     return (
-        <Draggable draggableId={`task-${task.id}`} index={index}>
+        <Draggable draggableId={`task-${task.id}`} index={index} isDragDisabled={isDragDisabled}>
             {(provided, snapshot) => (
                 <div
                     ref={provided.innerRef}

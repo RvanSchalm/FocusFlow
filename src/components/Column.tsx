@@ -2,23 +2,24 @@ import { Draggable, Droppable } from "@hello-pangea/dnd";
 import { useState } from "react";
 import { useStore } from "../store/useStore";
 import type { Column as ColumnType, Task } from "../domain/schema";
-import { useConfirm } from "./ConfirmDialog";
 import { TaskCard } from "./TaskCard";
+import { toast } from "sonner";
 
 interface ColumnProps {
     column: ColumnType;
     tasks: Task[];
     index: number;
     onTaskClick: (taskId: number) => void;
+    isDragDisabled?: boolean;
 }
 
-export function Column({ column, tasks, index, onTaskClick }: ColumnProps) {
+export function Column({ column, tasks, index, onTaskClick, isDragDisabled }: ColumnProps) {
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [title, setTitle] = useState(column.title);
-    const confirm = useConfirm();
-
+    
     const updateColumn = useStore(state => state.updateColumn);
     const deleteColumnFromDb = useStore(state => state.deleteColumn);
+    const restoreColumn = useStore(state => state.restoreColumn);
     const addTaskToDb = useStore(state => state.addTask);
 
     const handleTitleSave = async () => {
@@ -56,23 +57,27 @@ export function Column({ column, tasks, index, onTaskClick }: ColumnProps) {
     };
 
     const deleteColumn = async (id: number) => {
-        const confirmed = await confirm({
-            title: "Delete Column",
-            message: "Delete this column and all its tasks? This action cannot be undone.",
-            confirmText: "Delete",
-            variant: "danger",
-        });
-        if (confirmed) {
-            try {
-                await deleteColumnFromDb(id);
-            } catch (error) {
-                console.error("Failed to delete column:", error);
-            }
+        const state = useStore.getState();
+        const columnToRestore = state.columns.find(c => c.id === id);
+        const tasksToRestore = state.tasks.filter(t => t.columnId === id);
+
+        if (!columnToRestore) return;
+
+        try {
+            await deleteColumnFromDb(id);
+            toast("Column deleted", {
+                action: {
+                    label: "Undo",
+                    onClick: () => restoreColumn(columnToRestore, tasksToRestore)
+                }
+            });
+        } catch (error) {
+            console.error("Failed to delete column:", error);
         }
     };
 
     return (
-        <Draggable draggableId={`col-${column.id}`} index={index}>
+        <Draggable draggableId={`col-${column.id}`} index={index} isDragDisabled={isDragDisabled}>
             {(provided) => (
                 <div
                     ref={provided.innerRef}
@@ -114,7 +119,7 @@ export function Column({ column, tasks, index, onTaskClick }: ColumnProps) {
                         </button>
                     </div>
 
-                    <Droppable droppableId={`col-${column.id}`} type="task">
+                    <Droppable droppableId={`col-${column.id}`} type="task" isDropDisabled={isDragDisabled}>
                         {(provided, snapshot) => (
                             <div
                                 ref={provided.innerRef}
@@ -123,7 +128,7 @@ export function Column({ column, tasks, index, onTaskClick }: ColumnProps) {
                                     }`}
                             >
                                 {tasks.map((task, index) => (
-                                    <TaskCard key={task.id} task={task} index={index} onClick={() => onTaskClick(task.id)} />
+                                    <TaskCard key={task.id} task={task} index={index} onClick={() => onTaskClick(task.id)} isDragDisabled={isDragDisabled} />
                                 ))}
                                 {provided.placeholder}
                             </div>

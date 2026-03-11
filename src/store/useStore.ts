@@ -9,33 +9,39 @@ export interface AppState {
     labels: Label[];
     settings: FocusFlowSettings;
     isLoading: boolean;
+    isSaving: boolean;
     error: string | null;
 
     initialize: () => Promise<void>;
+    setIsSaving: (isSaving: boolean) => void;
 
     // Boards
     addBoard: (board: Omit<Board, 'id'>) => Promise<number>;
     updateBoard: (id: number, updates: Partial<Board>) => void;
     deleteBoard: (id: number) => void;
     bulkUpdateBoards: (updates: { id: number; changes: Partial<Board> }[]) => void;
+    restoreBoard: (board: Board, columns: Column[], tasks: Task[]) => void;
 
     // Columns
     addColumn: (column: Omit<Column, 'id'>) => Promise<number>;
     updateColumn: (id: number, updates: Partial<Column>) => void;
     deleteColumn: (id: number) => void;
     bulkUpdateColumns: (updates: { id: number; changes: Partial<Column> }[]) => void;
+    restoreColumn: (column: Column, tasks: Task[]) => void;
 
     // Tasks
     addTask: (task: Omit<Task, 'id'>) => Promise<number>;
     updateTask: (id: number, updates: Partial<Task>) => void;
     deleteTask: (id: number) => void;
     bulkUpdateTasks: (updates: { id: number; changes: Partial<Task> }[]) => void;
+    restoreTask: (task: Task) => void;
 
     // Labels
     addLabel: (label: Omit<Label, 'id'>) => Promise<number>;
     updateLabel: (id: number, updates: Partial<Label>) => void;
     deleteLabel: (id: number) => void;
     bulkUpdateLabels: (updates: { id: number; changes: Partial<Label> }[]) => void;
+    restoreLabel: (label: Label, affectedTasks: Task[]) => void;
 
     // Settings
     updateSettings: (updates: Partial<FocusFlowSettings>) => void;
@@ -53,7 +59,10 @@ export const useStore = create<AppState>()((set) => ({
     labels: [],
     settings: { windowBounds: { width: 1200, height: 800 }, lastOpenedBoardId: null, theme: 'dark' },
     isLoading: true,
+    isSaving: false,
     error: null,
+
+    setIsSaving: (isSaving) => set({ isSaving }),
 
     initialize: async () => {
         try {
@@ -95,6 +104,11 @@ export const useStore = create<AppState>()((set) => ({
             return update ? { ...b, ...update.changes } : b;
         })
     })),
+    restoreBoard: (board, restoredColumns, restoredTasks) => set(state => ({
+        boards: [...state.boards, board],
+        columns: [...state.columns, ...restoredColumns],
+        tasks: [...state.tasks, ...restoredTasks]
+    })),
 
     // ==================== COLUMNS ====================
     addColumn: async (column) => {
@@ -118,6 +132,10 @@ export const useStore = create<AppState>()((set) => ({
             return update ? { ...c, ...update.changes } : c;
         })
     })),
+    restoreColumn: (column, restoredTasks) => set(state => ({
+        columns: [...state.columns, column],
+        tasks: [...state.tasks, ...restoredTasks]
+    })),
 
     // ==================== TASKS ====================
     addTask: async (task) => {
@@ -139,6 +157,9 @@ export const useStore = create<AppState>()((set) => ({
             const update = updates.find(u => u.id === t.id);
             return update ? { ...t, ...update.changes } : t;
         })
+    })),
+    restoreTask: (task) => set(state => ({
+        tasks: [...state.tasks, task]
     })),
 
     // ==================== LABELS ====================
@@ -166,6 +187,13 @@ export const useStore = create<AppState>()((set) => ({
             return update ? { ...l, ...update.changes } : l;
         })
     })),
+    restoreLabel: (label, affectedTasks) => set(state => {
+        const affectedIds = new Set(affectedTasks.map(t => t.id));
+        return {
+            labels: [...state.labels, label],
+            tasks: state.tasks.map(t => affectedIds.has(t.id) ? affectedTasks.find(at => at.id === t.id)! : t)
+        };
+    }),
 
     // ==================== SETTINGS ====================
     updateSettings: (updates) => set(state => ({
@@ -189,11 +217,18 @@ useStore.subscribe((state, prevState) => {
             labels: state.labels,
             version: 1,
             lastModified: new Date().toISOString()
-        });
+        },
+            () => useStore.getState().setIsSaving(true),
+            () => useStore.getState().setIsSaving(false)
+        );
     }
 
     // Check if settings changed
     if (state.settings !== prevState.settings) {
-        saveSettingsDebounced(state.settings);
+        saveSettingsDebounced(
+            state.settings,
+            () => useStore.getState().setIsSaving(true),
+            () => useStore.getState().setIsSaving(false)
+        );
     }
 });
