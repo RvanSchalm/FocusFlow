@@ -1,3 +1,4 @@
+import { create } from 'zustand';
 import type { Board, Column, Task, Label, FocusFlowSettings } from '../domain/schema';
 import { initializeData, getSettings, saveDataDebounced, saveSettingsDebounced } from '../services/dataService';
 

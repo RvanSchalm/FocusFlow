@@ -1,6 +1,6 @@
 import { ipcMain, app, BrowserWindow } from "electron";
 import { dirname, join } from "path";
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
+import { existsSync, promises, mkdirSync } from "fs";
 import { fileURLToPath } from "url";
 const __filename$1 = fileURLToPath(import.meta.url);
 const __dirname$1 = dirname(__filename$1);
@@ -31,12 +31,12 @@ const getDefaultSettings = () => ({
   lastOpenedBoardId: null,
   theme: "dark"
 });
-const loadData = () => {
+const loadData = async () => {
   try {
     ensureDataDir();
     const dataPath = getDataPath();
     if (existsSync(dataPath)) {
-      const content = readFileSync(dataPath, "utf-8");
+      const content = await promises.readFile(dataPath, "utf-8");
       return JSON.parse(content);
     }
     return getDefaultData();
@@ -45,7 +45,7 @@ const loadData = () => {
     return getDefaultData();
   }
 };
-const saveData = (data) => {
+const saveData = async (data) => {
   try {
     ensureDataDir();
     const dataPath = getDataPath();
@@ -53,19 +53,19 @@ const saveData = (data) => {
       ...data,
       lastModified: (/* @__PURE__ */ new Date()).toISOString()
     };
-    writeFileSync(dataPath, JSON.stringify(dataWithMeta, null, 2), "utf-8");
+    await promises.writeFile(dataPath, JSON.stringify(dataWithMeta, null, 2), "utf-8");
     return true;
   } catch (error) {
     console.error("Failed to save data:", error);
     return false;
   }
 };
-const loadSettings = () => {
+const loadSettings = async () => {
   try {
     ensureDataDir();
     const settingsPath = getSettingsPath();
     if (existsSync(settingsPath)) {
-      const content = readFileSync(settingsPath, "utf-8");
+      const content = await promises.readFile(settingsPath, "utf-8");
       return JSON.parse(content);
     }
     return getDefaultSettings();
@@ -74,11 +74,11 @@ const loadSettings = () => {
     return getDefaultSettings();
   }
 };
-const saveSettings = (settings) => {
+const saveSettings = async (settings) => {
   try {
     ensureDataDir();
     const settingsPath = getSettingsPath();
-    writeFileSync(settingsPath, JSON.stringify(settings, null, 2), "utf-8");
+    await promises.writeFile(settingsPath, JSON.stringify(settings, null, 2), "utf-8");
     return true;
   } catch (error) {
     console.error("Failed to save settings:", error);
@@ -86,8 +86,8 @@ const saveSettings = (settings) => {
   }
 };
 let mainWindow = null;
-const createWindow = () => {
-  const settings = loadSettings();
+const createWindow = async () => {
+  const settings = await loadSettings();
   const bounds = settings.windowBounds || { width: 1200, height: 800 };
   mainWindow = new BrowserWindow({
     width: bounds.width,
@@ -109,11 +109,11 @@ const createWindow = () => {
   mainWindow.once("ready-to-show", () => {
     mainWindow?.show();
   });
-  mainWindow.on("close", () => {
+  mainWindow.on("close", async () => {
     if (mainWindow) {
       const bounds2 = mainWindow.getBounds();
-      const currentSettings = loadSettings();
-      saveSettings({ ...currentSettings, windowBounds: bounds2 });
+      const currentSettings = await loadSettings();
+      await saveSettings({ ...currentSettings, windowBounds: bounds2 });
     }
   });
   if (process.env.VITE_DEV_SERVER_URL) {
@@ -129,9 +129,9 @@ ipcMain.handle("settings:load", () => loadSettings());
 ipcMain.handle("settings:save", (_event, settings) => saveSettings(settings));
 ipcMain.handle("app:getDataPath", () => getDataPath());
 ipcMain.handle("app:getSettingsPath", () => getSettingsPath());
-ipcMain.handle("data:exportAll", () => {
-  const data = loadData();
-  const settings = loadSettings();
+ipcMain.handle("data:exportAll", async () => {
+  const data = await loadData();
+  const settings = await loadSettings();
   return {
     data,
     settings,
@@ -139,13 +139,13 @@ ipcMain.handle("data:exportAll", () => {
     appVersion: app.getVersion()
   };
 });
-ipcMain.handle("data:importAll", (_event, importData) => {
+ipcMain.handle("data:importAll", async (_event, importData) => {
   try {
     if (importData.data) {
-      saveData(importData.data);
+      await saveData(importData.data);
     }
     if (importData.settings) {
-      saveSettings(importData.settings);
+      await saveSettings(importData.settings);
     }
     return { success: true };
   } catch (error) {
